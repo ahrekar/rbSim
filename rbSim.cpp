@@ -2,7 +2,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "Particle.h"
 #include "ParticleGenerator.h"
 
 int main(int argc, char* argv[]){
@@ -13,6 +12,7 @@ int main(int argc, char* argv[]){
 	ParticleGenerator pg();
 
 	for(int i =0; i < n; i++){
+		particles.insert(particles.begin(),pg.generateParticle());
 	}
 
 	return 0;

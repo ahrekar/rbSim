@@ -1,2 +1,3 @@
-rbSim: rbSim.cpp
+rbSim: rbSim.cpp 
 	g++ rbSim.cpp -o rbSim
+
