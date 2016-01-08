@@ -1,6 +1,22 @@
 #include <stdio.h>
+#include <iostream>
+#include <string>
+#include <vector>
 
-int main(void){
-	printf("Hello World!\n");
+int main(int argc, char* argv[]){
+	//int n = stoi(argv[1]); 
+	int n = 1;
+
+	std::vector<int> numbers;
+
+	for(int i =0; i < n; i++){
+		numbers.insert(numbers.begin(),1);
+	}
+
+
+	for (int i=0; i < 4; i++){
+		printf("%d\n",numbers[i]);
+	}
+
 	return 0;
 }
