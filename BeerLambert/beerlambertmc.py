@@ -40,9 +40,9 @@ class Box:
         # Boolean variable: True=Isotropic scattering. False=Anisotropic/forward scattering
         self.isotrop = isotropic
         # Magnitude of magnetic field parallel to z axis, lengthwise axis of box.
-        self.magnet = magnetfield
+        self.magnet = (0,0,magnetfield)
         # Magnitude of electric field parallel to z axis, lengthwise axis of box.
-        self.electr = electrfield
+        self.electr = (0,0,electrfield)
         # Boolean variable: True=consider two attenuating species (Rubidium and Nitrogen molecules) spiin polarization of
         # electrons, and elastic and inelastic scattering. False=consider single arbitrary attenuating species.
         self.experi = polarexperi
@@ -73,6 +73,8 @@ class Electron:
         self.direct = [0, 0, 1]
         # Point of initialization
         self.scattpt = [0, 0, 0]
+        # Location of electron
+        self.loc = [0,0,0]
         # List of scatter points.
         self.scattlist = [(0, 0, 0)]
         # List of scattering direction at each point
@@ -91,7 +93,10 @@ class Electron:
     # Move electron to next scattering point and calculate new scattering direction. Record scattering point and
     # previous direction in scattlist and directlist respectively.
     def movestep(self):
-        
+        for i in range(0,3):
+            acc=cmr*(electr[i]+speed*numpy.cross(direct,magnet)[i])
+            self.loc[i] += speed * self.direct[i]*dt+.5*(acc)* t**2
+            self.
         # In absence of attenuating species, calculate step size of electron to simply travel beyond length of box.
         if self.box.nden == 0:
             if self.box.magnet != 0:
@@ -115,7 +120,7 @@ class Electron:
             self.scattpt[0] += self.x(t, self.direct)
             self.scattpt[1] += self.y(t, self.direct)
             self.scattpt[2] += self.z(t, self.direct)
-            self.speed = self.newvel(t, self.direct)
+            self.speed = self.newSpeed(t, self.direct)
         else:
             # Find new scatter points when magnetic and electric fields are zero. Path of electron is linear.
             self.scattpt[0] += self.direct[0] * s
@@ -265,7 +270,7 @@ class Electron:
             return (z * sign(d[2])) / (d[2] * self.speed)
 
     # Update velocity after travel between scattering events due to electric/magnetic field.
-    def newvel(self, t, d):
+    def newSpeed(self, t, d):
         return sqrt((self.speed * (-d[1] * sin(cmr * self.box.magnet * t) +
                                  d[0] * cos(cmr * self.box.magnet * t))) ** 2 +
                     (self.speed * (d[0] * sin(cmr * self.box.magnet * t) +
