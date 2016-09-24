@@ -14,6 +14,8 @@ n2mass = 28.0134
 jpev = 6.242 * 10 ** 18
 a = 0.9 ** 2 * 2.84304
 b = 1.2 ** 2 * 2.84304
+# The size of the discrete time step, measured in seconds.
+dt=1e-6
 
 # Combines conditions of electron propagation into a single object, Box.
 class Box:
@@ -78,7 +80,7 @@ class Electron:
         # When recordpath=True, discretized path of electron. See box.rp.
         self.path = [(0, 0, 0)]
         # Velocity of initialization (cm/s)
-        self.vel = 10 ** 8
+        self.speed = 10 ** 8
         # When polarexperi=True randomly assign random spin polarization of electron with probability 0.5.
         xi = uniform(0, 1)
         if xi < 0.5:
@@ -89,6 +91,7 @@ class Electron:
     # Move electron to next scattering point and calculate new scattering direction. Record scattering point and
     # previous direction in scattlist and directlist respectively.
     def movestep(self):
+        
         # In absence of attenuating species, calculate step size of electron to simply travel beyond length of box.
         if self.box.nden == 0:
             if self.box.magnet != 0:
@@ -98,6 +101,7 @@ class Electron:
         # Calculate a randomized distance between scattering events when number density of species is greater than 0
         else:
             s = self.randomstepsize()
+
         if self.box.magnet != 0 or self.box.electr != 0:
             # Find time needed to travel given step size with nonzero magnetic and/or electric field
             t = self.tpath(s, self.direct)
@@ -111,7 +115,7 @@ class Electron:
             self.scattpt[0] += self.x(t, self.direct)
             self.scattpt[1] += self.y(t, self.direct)
             self.scattpt[2] += self.z(t, self.direct)
-            self.vel = self.newvel(t, self.direct)
+            self.speed = self.newvel(t, self.direct)
         else:
             # Find new scatter points when magnetic and electric fields are zero. Path of electron is linear.
             self.scattpt[0] += self.direct[0] * s
@@ -155,14 +159,14 @@ class Electron:
                     d = self.directlist[-1]
                     # Component parallel to z axis of Nitrogen velocity after scattering event. Used to determine
                     # post scattering velocity of electron with components vx, vy, and vz
-                    vz2 = (2 * self.vel * d[2] + 2 * tan(theta) * (cos(phi) * self.vel * d[0] +
-                                          sin(phi) * self.vel * d[1])) / \
+                    vz2 = (2 * self.speed * d[2] + 2 * tan(theta) * (cos(phi) * self.speed * d[0] +
+                                          sin(phi) * self.speed * d[1])) / \
                           ((1 + tan(theta) ** 2) * (1 + (n2mass / emass)))
-                    vx = self.vel * d[0] - tan(theta) * cos(phi) * (n2mass / emass) * vz2
-                    vy = self.vel * d[1] - tan(theta) * sin(phi) * (n2mass / emass) * vz2
-                    vz = self.vel * d[2] - (n2mass / emass) * vz2
+                    vx = self.speed * d[0] - tan(theta) * cos(phi) * (n2mass / emass) * vz2
+                    vy = self.speed * d[1] - tan(theta) * sin(phi) * (n2mass / emass) * vz2
+                    vz = self.speed * d[2] - (n2mass / emass) * vz2
                     # Find magnitude of electron velocity post scattering.
-                    self.vel = sqrt(vx ** 2 + vy ** 2 + vz ** 2)
+                    self.speed = sqrt(vx ** 2 + vy ** 2 + vz ** 2)
                 # Terminate electron. Total inelastic scattering when energy of electron between a and b.
                 else:
                     self.alive = False
@@ -196,7 +200,7 @@ class Electron:
 
     # Determine scattering cross section of Rubidium atom- dependent on electron velocity (cm/s)
     def rbsig(self):
-        return exp(-self.vel / 10 ** 8) * 10 ** 14
+        return exp(-self.speed / 10 ** 8) * 10 ** 14
 
     # Determine scattering cross section of Nitrogen molecule. Dependent on energy of electron.
     def n2nsig(self):
@@ -209,62 +213,62 @@ class Electron:
 
     # Calculate energy of electron in eV.
     def energyev(self):
-        return jpev * (0.5 * emass * (self.vel / 100) ** 2)
+        return jpev * (0.5 * emass * (self.speed / 100) ** 2)
 
     # Calculate x location of electron in presence of magnetic and electric field after time t given scattering
     # direction
     def x(self, t, d):
         if self.box.magnet != 0:
             return ((-d[1] + d[1] * cos(cmr * self.box.magnet * t) + d[0] * sin(
-                cmr * self.box.magnet * t)) * self.vel) / (cmr * self.box.magnet)
+                cmr * self.box.magnet * t)) * self.speed) / (cmr * self.box.magnet)
         elif self.box.electr != 0:
-            return d[0] * self.vel * t
+            return d[0] * self.speed * t
 
     # Calculate y location of electron in presence of magnetic and electric field after time t given scattering
     # direction
     def y(self, t, d):
         if self.box.magnet != 0:
             return ((d[0] - d[0] * cos(cmr * self.box.magnet * t) + d[1] * sin(
-                cmr * self.box.magnet * t)) * self.vel) / (cmr * self.box.magnet)
+                cmr * self.box.magnet * t)) * self.speed) / (cmr * self.box.magnet)
         elif self.box.electr != 0:
-            return d[1] * self.vel * t
+            return d[1] * self.speed * t
 
-    # Calculate y location of electron in presence of magnetic and electric field after time t given scattering
+    # Calculate z location of electron in presence of magnetic and electric field after time t given scattering
     # direction
     def z(self, t, d):
-        return 0.5 * cmr * self.box.electr * t ** 2 + d[2] * self.vel * t
+        return 0.5 * cmr * self.box.electr * t ** 2 + d[2] * self.speed * t
 
     # Calculate arc length in xy plane traveled per second in magnetic field.
     def arcpsec(self, d):
-        return self.vel * sqrt(d[0] ** 2 + d[1] ** 2)
+        return self.speed * sqrt(d[0] ** 2 + d[1] ** 2)
 
     # Calculate time required to travel given arc length and initial scattering direction.
     def tpath(self, s, d):
         if self.box.electr != 0:
-            if (d[2] * self.vel) ** 2 + 2 * cmr * self.box.electr * s * sign(d[2]) < 0:
+            if (d[2] * self.speed) ** 2 + 2 * cmr * self.box.electr * s * sign(d[2]) < 0:
                 return s / self.arcpsec(d)
             else:
                 l = self.arcpsec(d)
-                return (-(d[2] * self.vel + sign(d[2]) * l) + sign(d[2]) * sqrt(
-                    (d[2] * self.vel + sign(d[2]) * l) ** 2 + 2 * cmr * self.box.electr * s * sign(d[2]))) / (
+                return (-(d[2] * self.speed + sign(d[2]) * l) + sign(d[2]) * sqrt(
+                    (d[2] * self.speed + sign(d[2]) * l) ** 2 + 2 * cmr * self.box.electr * s * sign(d[2]))) / (
                            cmr * self.box.electr)
         else:
-            return (s * sign(d[2])) / (d[2] * self.vel)
+            return (s * sign(d[2])) / (d[2] * self.speed)
 
     # Calculate time required to travel given length along z axis given initial scattering direction.
     def tblength(self, z, d):
         if self.box.electr != 0:
-            return (-d[2] * self.vel + sqrt(
-                (d[2] * self.vel) ** 2 + 2 * cmr * self.box.electr * z)) / (
+            return (-d[2] * self.speed + sqrt(
+                (d[2] * self.speed) ** 2 + 2 * cmr * self.box.electr * z)) / (
                        cmr * self.box.electr)
         else:
-            return (z * sign(d[2])) / (d[2] * self.vel)
+            return (z * sign(d[2])) / (d[2] * self.speed)
 
     # Update velocity after travel between scattering events due to electric/magnetic field.
     def newvel(self, t, d):
-        return sqrt((self.vel * (-d[1] * sin(cmr * self.box.magnet * t) +
+        return sqrt((self.speed * (-d[1] * sin(cmr * self.box.magnet * t) +
                                  d[0] * cos(cmr * self.box.magnet * t))) ** 2 +
-                    (self.vel * (d[0] * sin(cmr * self.box.magnet * t) +
+                    (self.speed * (d[0] * sin(cmr * self.box.magnet * t) +
                                  d[1] * cos(cmr * self.box.magnet * t))) ** 2 +
                     (cmr * self.box.electr * t + d[2]) ** 2)
 
@@ -281,7 +285,7 @@ class Electron:
             self.scattlist = [(0, 0, 0)]
             self.directlist = [(0, 0, 0,)]
             self.alive = False
-        elif self.box.magnet != 0 and (self.vel * sqrt(d[0] + d[1])) / (-cmr * self.box.magnet) + r > self.box.radius:
+        elif self.box.magnet != 0 and (self.speed * sqrt(d[0] + d[1])) / (-cmr * self.box.magnet) + r > self.box.radius:
             self.scattlist = [(0, 0, 0)]
             self.directlist = [(0, 0, 0,)]
             self.alive = False
