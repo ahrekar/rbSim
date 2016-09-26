@@ -19,8 +19,10 @@ dt=1e-6
 
 # Combines conditions of electron propagation into a single object, Box.
 class Box:
-    def __init__(self, ndensity, count, rbndensity=10 ** 13, n2ndensity=10 ** 16, aperture=0.2,
-                 isotropic=True, magnetfield=0, electrfield=0, polarexperi=False, path3d=False):
+    def __init__(self, ndensity, count, rbndensity=10 ** 13, 
+                 n2ndensity=10 ** 16, aperture=0.2, isotropic=True, 
+                 magnetfield=(0,0,0), electrfield=(0,0,0), 
+                 polarexperi=False, path3d=False, bias=100.0):
         # Number density of arbitrary attenuating particle. When polarexperi=False
         self.nden = ndensity
         # Number density of Rubidium atoms. When polarexperi=True
@@ -37,7 +39,8 @@ class Box:
         self.radius = 1
         # Length of chamber
         self.length = 3
-        # Boolean variable: True=Isotropic scattering. False=Anisotropic/forward scattering
+        # Boolean variable: True=Isotropic scattering. 
+        #                   False=Anisotropic/forward scattering
         self.isotrop = isotropic
         # Magnitude of magnetic field parallel to z axis, lengthwise axis of box.
         self.magnet = (0,0,magnetfield)
@@ -49,6 +52,9 @@ class Box:
         # Boolean variable: True=record path of electron in addition to merely recording scattering points.
         # Also plotting of electron path in presence of magnetic field in 3d graphics.
         self.rp = path3d
+
+        # A variable to hold the potential energy that the target is set at.
+        self.bias = 100.0
 
     # Find fraction of "count" number of electrons transmitted through aperture of given box. Return fraction.
     def transmissvalue(self):
@@ -65,6 +71,8 @@ class Box:
 
 class Electron:
     def __init__(self, box):
+        # Potential energy of the electron 
+        self.potential = 120.0 
         # Bundled conditions of propagation.
         self.box = box
         # Boolean value: False=electron terminated.
@@ -93,13 +101,9 @@ class Electron:
     # Move electron to next scattering point and calculate new scattering direction. Record scattering point and
     # previous direction in scattlist and directlist respectively.
     def movestep(self):
-        for i in range(0,3):
-            acc=cmr*(electr[i]+speed*numpy.cross(direct,magnet)[i])
-            self.loc[i] += speed * self.direct[i]*dt+.5*(acc)* t**2
-            self.
         # In absence of attenuating species, calculate step size of electron to simply travel beyond length of box.
         if self.box.nden == 0:
-            if self.box.magnet != 0:
+            if self.box.magnet[2] != 0:
                 s = 1.1 * (self.box.length + self.arcpsec(self.direct) * self.tblength(self.box.length, self.direct))
             else:
                 s = 1.1 * self.box.length
@@ -107,11 +111,11 @@ class Electron:
         else:
             s = self.randomstepsize()
 
-        if self.box.magnet != 0 or self.box.electr != 0:
+        if self.box.magnet[2] != 0 or self.box.electr[2] != 0:
             # Find time needed to travel given step size with nonzero magnetic and/or electric field
             t = self.tpath(s, self.direct)
             # Interpolate path between scatter points of electron within magnetic field
-            if self.box.rp and self.box.magnet != 0:
+            if self.box.rp and self.box.magnet[2] != 0:
                 for i in linspace(0, t, 500):
                     self.path.append(
                         (self.scattpt[0] + self.x(i, self.direct), self.scattpt[1] + self.y(i, self.direct),
@@ -157,7 +161,8 @@ class Electron:
             alpha = self.rbsig() * self.box.rbnden + self.n2nsig() * self.box.n2nden
             # Electron collides with Nitrogen molecule probability (self.n2nsig() * self.box.n2nden) / alpha:
             if xi < (self.n2nsig() * self.box.n2nden) / alpha:
-                # Elastically scatter electron and adjust velocity after scattering. All Nitrogen molecules are assumed
+                # Elastically scatter electron and adjust velocity after 
+                # scattering. All Nitrogen molecules are assumed
                 # motionless prior to scattering event.
                 if self.energyev() < a and b < self.energyev():
                     # Previous scattering directional unit vector
@@ -174,7 +179,8 @@ class Electron:
                     self.speed = sqrt(vx ** 2 + vy ** 2 + vz ** 2)
                 # Terminate electron. Total inelastic scattering when energy of electron between a and b.
                 else:
-                    self.alive = False
+                    self.speed=0
+                    self.direct=[0,0,0]
             # Electron collides with Rubidium atom. Switch spin polarization if opposites.
             else:
                 if xi < 0.5 and self.color == 'r':
@@ -220,28 +226,28 @@ class Electron:
     def energyev(self):
         return jpev * (0.5 * emass * (self.speed / 100) ** 2)
 
-    # Calculate x location of electron in presence of magnetic and electric field after time t given scattering
-    # direction
+    # Calculate x location of electron in presence of magnetic 
+    # and electric field after time t given scattering direction
     def x(self, t, d):
-        if self.box.magnet != 0:
-            return ((-d[1] + d[1] * cos(cmr * self.box.magnet * t) + d[0] * sin(
-                cmr * self.box.magnet * t)) * self.speed) / (cmr * self.box.magnet)
-        elif self.box.electr != 0:
+        if self.box.magnet[2] != 0:
+            return ((-d[1] + d[1] * cos(cmr * self.box.magnet[2] * t) + d[0] * sin(
+                cmr * self.box.magnet[2] * t)) * self.speed) / (cmr * self.box.magnet[2])
+        elif self.box.electr[2] != 0:
             return d[0] * self.speed * t
 
     # Calculate y location of electron in presence of magnetic and electric field after time t given scattering
     # direction
     def y(self, t, d):
-        if self.box.magnet != 0:
-            return ((d[0] - d[0] * cos(cmr * self.box.magnet * t) + d[1] * sin(
-                cmr * self.box.magnet * t)) * self.speed) / (cmr * self.box.magnet)
-        elif self.box.electr != 0:
+        if self.box.magnet[2] != 0:
+            return ((d[0] - d[0] * cos(cmr * self.box.magnet[2] * t) + d[1] * sin(
+                cmr * self.box.magnet[2] * t)) * self.speed) / (cmr * self.box.magnet[2])
+        elif self.box.electr[2] != 0:
             return d[1] * self.speed * t
 
     # Calculate z location of electron in presence of magnetic and electric field after time t given scattering
     # direction
     def z(self, t, d):
-        return 0.5 * cmr * self.box.electr * t ** 2 + d[2] * self.speed * t
+        return 0.5 * cmr * self.box.electr[2] * t ** 2 + d[2] * self.speed * t
 
     # Calculate arc length in xy plane traveled per second in magnetic field.
     def arcpsec(self, d):
@@ -249,33 +255,39 @@ class Electron:
 
     # Calculate time required to travel given arc length and initial scattering direction.
     def tpath(self, s, d):
-        if self.box.electr != 0:
-            if (d[2] * self.speed) ** 2 + 2 * cmr * self.box.electr * s * sign(d[2]) < 0:
+        if self.box.electr[2] != 0:
+            # If the energy required to move the particle back the random 
+            # length (s) is greater than the kinetic energy that the particle
+            # has: 
+            #    calculate the time in the usual manner, dividing arc length 
+            #    by the speed it is traversing the arc.
+            if (d[2] * self.speed) ** 2 + 2 * cmr * self.box.electr[2] * s * sign(d[2]) < 0:
                 return s / self.arcpsec(d)
             else:
                 l = self.arcpsec(d)
-                return (-(d[2] * self.speed + sign(d[2]) * l) + sign(d[2]) * sqrt(
-                    (d[2] * self.speed + sign(d[2]) * l) ** 2 + 2 * cmr * self.box.electr * s * sign(d[2]))) / (
-                           cmr * self.box.electr)
+                return (-(d[2] * self.speed + sign(d[2]) * l) + sign(d[2]) * 
+                        sqrt((d[2] * self.speed + sign(d[2]) * l) ** 2 + 
+                        2 * cmr * self.box.electr[2] * s * sign(d[2]))) / 
+                        (cmr * self.box.electr[2])
         else:
             return (s * sign(d[2])) / (d[2] * self.speed)
 
     # Calculate time required to travel given length along z axis given initial scattering direction.
     def tblength(self, z, d):
-        if self.box.electr != 0:
+        if self.box.electr[2] != 0:
             return (-d[2] * self.speed + sqrt(
-                (d[2] * self.speed) ** 2 + 2 * cmr * self.box.electr * z)) / (
-                       cmr * self.box.electr)
+                (d[2] * self.speed) ** 2 + 2 * cmr * self.box.electr[2] * z)) / (
+                       cmr * self.box.electr[2])
         else:
             return (z * sign(d[2])) / (d[2] * self.speed)
 
     # Update velocity after travel between scattering events due to electric/magnetic field.
     def newSpeed(self, t, d):
-        return sqrt((self.speed * (-d[1] * sin(cmr * self.box.magnet * t) +
-                                 d[0] * cos(cmr * self.box.magnet * t))) ** 2 +
-                    (self.speed * (d[0] * sin(cmr * self.box.magnet * t) +
-                                 d[1] * cos(cmr * self.box.magnet * t))) ** 2 +
-                    (cmr * self.box.electr * t + d[2]) ** 2)
+        return sqrt((self.speed * (-d[1] * sin(cmr * self.box.magnet[2] * t) +
+                                 d[0] * cos(cmr * self.box.magnet[2] * t))) ** 2 +
+                    (self.speed * (d[0] * sin(cmr * self.box.magnet[2] * t) +
+                                 d[1] * cos(cmr * self.box.magnet[2] * t))) ** 2 +
+                    (cmr * self.box.electr[2] * t + d[2]) ** 2)
 
     # Determine if electron is within the attenuating chamber. If outside, delete scattlist and directlist and
     # terminate.
@@ -290,7 +302,7 @@ class Electron:
             self.scattlist = [(0, 0, 0)]
             self.directlist = [(0, 0, 0,)]
             self.alive = False
-        elif self.box.magnet != 0 and (self.speed * sqrt(d[0] + d[1])) / (-cmr * self.box.magnet) + r > self.box.radius:
+        elif self.box.magnet[2] != 0 and (self.speed * sqrt(d[0] + d[1])) / (-cmr * self.box.magnet[2]) + r > self.box.radius:
             self.scattlist = [(0, 0, 0)]
             self.directlist = [(0, 0, 0,)]
             self.alive = False
@@ -302,10 +314,11 @@ class Electron:
     def thruaper(self):
         if self.scattpt[2] > self.box.length:
             try:
-                # When magnetic and electric fields are nonzero, calculate location of electron at the length of the
-                # box along trajectory. Compare distance from (0, 0, box.length). Return true is less than aperture
-                # radius.
-                if self.box.electr != 0 or self.box.magnet != 0:
+                # When magnetic and electric fields are nonzero, calculate 
+                # location of electron at the length of the box along 
+                # trajectory. Compare distance from (0, 0, box.length). 
+                # Return true if less than aperture radius.
+                if self.box.electr[2] != 0 or self.box.magnet[2] != 0:
                     t = self.tblength(self.box.length - self.scattlist[-2][2], self.directlist[-1])
                     r = sqrt((self.x(t, self.directlist[-1]) + self.scattlist[-2][0]) ** 2 +
                              (self.y(t, self.directlist[-1]) + self.scattlist[-2][1]) ** 2)
@@ -319,6 +332,7 @@ class Electron:
                     t = (self.box.length - r0[2]) / (r1[2] - r0[2])
                     r = sqrt((r0[0] + t * (r1[0] - r0[0])) ** 2 + (r0[1] + t * (r1[1] - r0[1])) ** 2)
                     if r < self.box.aper:
+                        print(self.energyev())
                         return True
                 return False
             except IndexError:
