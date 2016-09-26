@@ -253,7 +253,7 @@ class Electron:
     def arcpsec(self, d):
         return self.speed * sqrt(d[0] ** 2 + d[1] ** 2)
 
-    # Calculate time required to travel given arc length and initial scattering direction.
+    # Calculate time required to travel a distance s, given initial scattering direction.
     def tpath(self, s, d):
         if self.box.electr[2] != 0:
             # If the energy required to move the particle back the random 
