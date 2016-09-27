@@ -55,6 +55,9 @@ class Box:
 
         # A variable to hold the potential energy that the target is set at.
         self.bias = 100.0
+		
+        # An array of electrons that make it through the chamber
+        self.electrons = []
 
     # Find fraction of "count" number of electrons transmitted through aperture of given box. Return fraction.
     def transmissvalue(self):
@@ -66,6 +69,9 @@ class Box:
                 p.inbox()
             if p.thruaper:
                 thru += 1
+                self.electrons.append(p)
+        print(len(self.electrons))
+        print(thru)
         return thru / self.count
 
 
@@ -77,8 +83,6 @@ class Electron:
         self.box = box
         # Boolean value: False=electron terminated.
         self.alive = True
-        # Direction of initialization
-        self.direct = [0, 0, 1]
         # Point of initialization
         self.scattpt = [0, 0, 0]
         # Location of electron
@@ -90,7 +94,7 @@ class Electron:
         # When recordpath=True, discretized path of electron. See box.rp.
         self.path = [(0, 0, 0)]
         # Velocity of initialization (cm/s)
-        self.speed = 10 ** 8
+        self.vel = [0,0,10 ** 8]
         # When polarexperi=True randomly assign random spin polarization of electron with probability 0.5.
         xi = uniform(0, 1)
         if xi < 0.5:
@@ -98,95 +102,136 @@ class Electron:
         else:
             self.color = 'b'
 
+    @property
+    def speed(self):
+        return sqrt(self.vel[0]**2+self.vel[1]**2+self.vel[2]**2)
+
+    # dx calculates the change in the position from the previous 
+    # time step. The index gives access to the x, y, and z coordinates
+    # with 0,1, and 2, respectively. 
+    def dx(self, index):
+        cyclic = [0,1,2]
+        cyclic = roll(cyclic, index)
+        acc = cmr * (self.electr[cyclic[0]] + 
+                     vel[cyclic[1]]*self.magnet[cyclic[2]] +
+                     (-1)*vel[cyclic[2]]*self.magnet[cyclic[1]])
+        return self.speed * vel[index] * dt + .5 * acc * dt**2
+
+    # dv calculates the change in the velocity from the previous 
+    # time step. The index gives access to the x, y, and z coordinates
+    # with 0,1, and 2, respectively. 
+    def dv(self, index):
+        cyclic = [0,1,2]
+        cyclic = roll(cyclic, index)
+        acc = cmr * (self.electr[cyclic[0]] + 
+                     vel[cyclic[1]]*self.magnet[cyclic[2]] +
+                     (-1)*vel[cyclic[2]]*self.magnet[cyclic[1]])
+        return  acc * dt
+
+    # Calculate the length of the path the particle will traverse in
+    # the infinitesimally small step dt. 
+    def calcDistTrav(self):
+        return sqrt(dx(0)**2 + dx(1)**2 + dx(2)**2)
+
     # Move electron to next scattering point and calculate new scattering direction. Record scattering point and
     # previous direction in scattlist and directlist respectively.
     def movestep(self):
-        # In absence of attenuating species, calculate step size of electron to simply travel beyond length of box.
-        if self.box.nden == 0:
-            if self.box.magnet[2] != 0:
-                s = 1.1 * (self.box.length + self.arcpsec(self.direct) * self.tblength(self.box.length, self.direct))
-            else:
-                s = 1.1 * self.box.length
-        # Calculate a randomized distance between scattering events when number density of species is greater than 0
-        else:
-            s = self.randomstepsize()
-
-        if self.box.magnet[2] != 0 or self.box.electr[2] != 0:
-            # Find time needed to travel given step size with nonzero magnetic and/or electric field
-            t = self.tpath(s, self.direct)
-            # Interpolate path between scatter points of electron within magnetic field
-            if self.box.rp and self.box.magnet[2] != 0:
-                for i in linspace(0, t, 500):
-                    self.path.append(
-                        (self.scattpt[0] + self.x(i, self.direct), self.scattpt[1] + self.y(i, self.direct),
-                         self.scattpt[2] + self.z(i, self.direct)))
-            # Find new scatter points and update electron velocity at time of scattering.
-            self.scattpt[0] += self.x(t, self.direct)
-            self.scattpt[1] += self.y(t, self.direct)
-            self.scattpt[2] += self.z(t, self.direct)
-            self.speed = self.newSpeed(t, self.direct)
-        else:
-            # Find new scatter points when magnetic and electric fields are zero. Path of electron is linear.
-            self.scattpt[0] += self.direct[0] * s
-            self.scattpt[1] += self.direct[1] * s
-            self.scattpt[2] += self.direct[2] * s
-        # Record scatter point and previous scattering direction.
+        # Record scatter point and direction of particle.
         self.scattlist.append((self.scattpt[0], self.scattpt[1], self.scattpt[2]))
-        self.directlist.append((self.direct[0], self.direct[1], self.direct[2]))
+        self.directlist.append((self.vel[0]/self.speed, 
+                                self.vel[1]/self.speed, 
+                                self.vel[2]/self.speed,))
 
-        # Find new random scattering direction. Phi-azimuth angle [0, 2pi). Theta-altitude. [0, pi).
-        phi = uniform(0, 2 * pi)
-        theta = self.randomtheta()
-        ux = self.direct[0]
-        uy = self.direct[1]
-        uz = self.direct[2]
-        # Convert angles to directional unit vector in Cartesian coordinates. Theta and phi are respect to incidental
-        # direction of electron prior to scattering.
-        if self.direct[2] ** 2 == 1:
-            self.direct[0] = sin(theta) * cos(phi)
-            self.direct[1] = sign(uz) * sin(theta) * sin(phi)
-            self.direct[2] = sign(uz) * cos(theta)
-        # Calculate directional unit vector in Cartesian coordinates with respect to standard basis when incidental
-        # direction of electron is not parallel to z axis.
-        else:
-            self.direct[0] = (sin(theta) * cos(phi) * ux * uz - sin(theta) * sin(phi) *
-                              uy) / sqrt(1 - uz ** 2) + ux * cos(theta)
-            self.direct[1] = (sin(theta) * cos(phi) * uy * uz + sin(theta) * sin(phi) *
-                              ux) / sqrt(1 - uz ** 2) + uy * cos(theta)
-            self.direct[2] = -sin(theta) * cos(phi) * sqrt(1 - uz ** 2) + uz * cos(theta)
+        # Calculate the distance the particle will travel.
+        dist = self.calcDistTraveled()
 
-        if self.box.experi:
-            xi = uniform(0, 1)
-            # Summed cross sectional area of all attenuating per cubic cm.
+        # Calculate probability that the particle scatters based on 
+        # distance traveled.
+        if self.box.experi: # If we are simulating the actual experiment, there
+                            # are two gases in the chamber which we have to 
+                            # account for. 
             alpha = self.rbsig() * self.box.rbnden + self.n2nsig() * self.box.n2nden
-            # Electron collides with Nitrogen molecule probability (self.n2nsig() * self.box.n2nden) / alpha:
-            if xi < (self.n2nsig() * self.box.n2nden) / alpha:
-                # Elastically scatter electron and adjust velocity after 
-                # scattering. All Nitrogen molecules are assumed
-                # motionless prior to scattering event.
-                if self.energyev() < a and b < self.energyev():
-                    # Previous scattering directional unit vector
-                    d = self.directlist[-1]
-                    # Component parallel to z axis of Nitrogen velocity after scattering event. Used to determine
-                    # post scattering velocity of electron with components vx, vy, and vz
-                    vz2 = (2 * self.speed * d[2] + 2 * tan(theta) * (cos(phi) * self.speed * d[0] +
-                                          sin(phi) * self.speed * d[1])) / \
-                          ((1 + tan(theta) ** 2) * (1 + (n2mass / emass)))
-                    vx = self.speed * d[0] - tan(theta) * cos(phi) * (n2mass / emass) * vz2
-                    vy = self.speed * d[1] - tan(theta) * sin(phi) * (n2mass / emass) * vz2
-                    vz = self.speed * d[2] - (n2mass / emass) * vz2
-                    # Find magnitude of electron velocity post scattering.
-                    self.speed = sqrt(vx ** 2 + vy ** 2 + vz ** 2)
-                # Terminate electron. Total inelastic scattering when energy of electron between a and b.
-                else:
-                    self.speed=0
-                    self.direct=[0,0,0]
-            # Electron collides with Rubidium atom. Switch spin polarization if opposites.
+        else:
+            alpha = self.box.sigt * self.box.nden
+
+        scatteringProbability = 1 - e**(-alpha*dist)
+
+        # Calculate a random number.
+        rand = -uniform(-1, 0)
+
+        # If the random number is less than the probability, the particle 
+        # scatters
+        if rand < scattering Probability:
+            # Find new random scattering direction. Phi-azimuth 
+            # angle [0, 2pi). Theta-altitude. [0, pi).
+            phi = uniform(0, 2 * pi)
+            theta = self.randomtheta()
+            ux = self.vel[0]/self.speed
+            uy = self.vel[1]/self.speed
+            uz = self.vel[2]/self.speed
+            # Convert angles to directional unit vector in 
+            # Cartesian coordinates. Theta and phi are respect to incidental
+            # direction of electron prior to scattering.
+            if self.vel[2]/self.speed ** 2 == 1:
+                self.vel[0] = self.speed * sin(theta) * cos(phi) 
+                self.vel[1] = self.speed * sign(uz) * sin(theta) * sin(phi)
+                self.vel[2] = self.speed * sign(uz) * cos(theta)
+            # Calculate directional unit vector in Cartesian coordinates 
+            # with respect to standard basis when incidental direction 
+            # of electron is not parallel to z axis.
             else:
-                if xi < 0.5 and self.color == 'r':
-                    self.color = 'b'
-                elif xi > 0.5 and self.color == 'b':
-                    self.color = 'r'
+                self.vel[0] = self.speed * (sin(theta) * cos(phi) * ux * 
+                                            uz - sin(theta) * 
+                                            sin(phi) * uy) / (
+                                    sqrt(1 - uz ** 2) + ux * cos(theta))
+                self.vel[1] = self.speed * (sin(theta) * cos(phi) * uy * 
+                                            uz + sin(theta) * 
+                                            sin(phi) * ux) / (
+                                    sqrt(1 - uz ** 2) + uy * cos(theta))
+                self.vel[2] = self.speed * (-sin(theta) * cos(phi) * sqrt(1 - uz ** 2) + uz * cos(theta))
+
+            if self.box.experi:
+                xi = uniform(0, 1)
+                # Summed cross sectional area of all attenuating per cubic cm.
+                alpha = self.rbsig() * self.box.rbnden + self.n2nsig() * self.box.n2nden
+                # Electron collides with Nitrogen molecule 
+                # probability (self.n2nsig() * self.box.n2nden) / alpha:
+                if xi < (self.n2nsig() * self.box.n2nden) / alpha:
+                    # Elastically scatter electron and adjust velocity after 
+                    # scattering. All Nitrogen molecules are assumed
+                    # motionless prior to scattering event.
+                    if self.energyev() < a or b < self.energyev():
+                        # Previous scattering directional unit vector
+                        d = self.directlist[-1]
+
+                        # Component parallel to z axis of Nitrogen 
+                        # velocity after scattering event. Used to 
+                        # determine post scattering velocity of electron 
+                        # with components vx, vy, and vz.
+                        vz2 = (2 * self.speed * d[2] + 2 * tan(theta) * (cos(phi) * self.speed * d[0] +
+                                              sin(phi) * self.speed * d[1])) / \
+                              ((1 + tan(theta) ** 2) * (1 + (n2mass / emass)))
+                        vx = self.speed * d[0] - tan(theta) * cos(phi) * (n2mass / emass) * vz2
+                        vy = self.speed * d[1] - tan(theta) * sin(phi) * (n2mass / emass) * vz2
+                        vz = self.speed * d[2] - (n2mass / emass) * vz2
+                        # Find magnitude of electron velocity post scattering.
+                        self.speed = sqrt(vx ** 2 + vy ** 2 + vz ** 2)
+                    # Electron is completely halted. Total 
+                    # inelastic scattering when 
+                    # energy of electron between a and b.
+                    else:
+                        self.vel=[0,0,0]
+                # Electron collides with Rubidium atom. Switch spin polarization if opposites.
+                else:
+                    if xi < 0.5 and self.color == 'r':
+                        self.color = 'b'
+                    elif xi > 0.5 and self.color == 'b':
+                        self.color = 'r'
+
+        # Calculate the new position and velocity of the particle
+        for i in range(3):
+            self.scattpt[i] += self.dx(i)
+            self.vel[i] += self.dv(i)
 
     # Randomly sample distance to next scattering event. Derived via Inverse transform sampling from the Beer Lambert
     # Law.
@@ -267,8 +312,8 @@ class Electron:
                 l = self.arcpsec(d)
                 return (-(d[2] * self.speed + sign(d[2]) * l) + sign(d[2]) * 
                         sqrt((d[2] * self.speed + sign(d[2]) * l) ** 2 + 
-                        2 * cmr * self.box.electr[2] * s * sign(d[2]))) / 
-                        (cmr * self.box.electr[2])
+                        2 * cmr * self.box.electr[2] * s * sign(d[2])) / 
+                        (cmr * self.box.electr[2]))
         else:
             return (s * sign(d[2])) / (d[2] * self.speed)
 
@@ -280,14 +325,6 @@ class Electron:
                        cmr * self.box.electr[2])
         else:
             return (z * sign(d[2])) / (d[2] * self.speed)
-
-    # Update velocity after travel between scattering events due to electric/magnetic field.
-    def newSpeed(self, t, d):
-        return sqrt((self.speed * (-d[1] * sin(cmr * self.box.magnet[2] * t) +
-                                 d[0] * cos(cmr * self.box.magnet[2] * t))) ** 2 +
-                    (self.speed * (d[0] * sin(cmr * self.box.magnet[2] * t) +
-                                 d[1] * cos(cmr * self.box.magnet[2] * t))) ** 2 +
-                    (cmr * self.box.electr[2] * t + d[2]) ** 2)
 
     # Determine if electron is within the attenuating chamber. If outside, delete scattlist and directlist and
     # terminate.
@@ -332,7 +369,7 @@ class Electron:
                     t = (self.box.length - r0[2]) / (r1[2] - r0[2])
                     r = sqrt((r0[0] + t * (r1[0] - r0[0])) ** 2 + (r0[1] + t * (r1[1] - r0[1])) ** 2)
                     if r < self.box.aper:
-                        print(self.energyev())
+                        #print(self.energyev())
                         return True
                 return False
             except IndexError:
