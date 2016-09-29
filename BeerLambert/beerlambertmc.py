@@ -15,7 +15,7 @@ jpev = 6.242 * 10 ** 18
 a = 0.9 ** 2 * 2.84304
 b = 1.2 ** 2 * 2.84304
 # The size of the discrete time step, measured in seconds.
-dt=1e-6
+dt=5e-17
 
 # Combines conditions of electron propagation into a single object, Box.
 class Box:
@@ -70,8 +70,6 @@ class Box:
             if p.thruaper:
                 thru += 1
                 self.electrons.append(p)
-        print(len(self.electrons))
-        print(thru)
         return thru / self.count
 
 
@@ -85,8 +83,6 @@ class Electron:
         self.alive = True
         # Point of initialization
         self.scattpt = [0, 0, 0]
-        # Location of electron
-        self.loc = [0,0,0]
         # List of scatter points.
         self.scattlist = [(0, 0, 0)]
         # List of scattering direction at each point
@@ -94,7 +90,7 @@ class Electron:
         # When recordpath=True, discretized path of electron. See box.rp.
         self.path = [(0, 0, 0)]
         # Velocity of initialization (cm/s)
-        self.vel = [0,0,10 ** 8]
+        self.vel = [0,0,10.0 ** 8]
         # When polarexperi=True randomly assign random spin polarization of electron with probability 0.5.
         xi = uniform(0, 1)
         if xi < 0.5:
@@ -112,10 +108,10 @@ class Electron:
     def dx(self, index):
         cyclic = [0,1,2]
         cyclic = roll(cyclic, index)
-        acc = cmr * (self.electr[cyclic[0]] + 
-                     vel[cyclic[1]]*self.magnet[cyclic[2]] +
-                     (-1)*vel[cyclic[2]]*self.magnet[cyclic[1]])
-        return self.speed * vel[index] * dt + .5 * acc * dt**2
+        acc = cmr * (self.box.electr[cyclic[0]] + 
+                     self.vel[cyclic[1]]*self.box.magnet[cyclic[2]] +
+                     (-1)*self.vel[cyclic[2]]*self.box.magnet[cyclic[1]])
+        return self.speed * self.vel[index] * dt + .5 * acc * dt**2
 
     # dv calculates the change in the velocity from the previous 
     # time step. The index gives access to the x, y, and z coordinates
@@ -123,15 +119,15 @@ class Electron:
     def dv(self, index):
         cyclic = [0,1,2]
         cyclic = roll(cyclic, index)
-        acc = cmr * (self.electr[cyclic[0]] + 
-                     vel[cyclic[1]]*self.magnet[cyclic[2]] +
-                     (-1)*vel[cyclic[2]]*self.magnet[cyclic[1]])
+        acc = cmr * (self.box.electr[cyclic[0]] + 
+                     self.vel[cyclic[1]]*self.box.magnet[cyclic[2]] +
+                     (-1)*self.vel[cyclic[2]]*self.box.magnet[cyclic[1]])
         return  acc * dt
 
     # Calculate the length of the path the particle will traverse in
     # the infinitesimally small step dt. 
-    def calcDistTrav(self):
-        return sqrt(dx(0)**2 + dx(1)**2 + dx(2)**2)
+    def calcDistTraveled(self):
+        return sqrt(self.dx(0)**2 + self.dx(1)**2 + self.dx(2)**2)
 
     # Move electron to next scattering point and calculate new scattering direction. Record scattering point and
     # previous direction in scattlist and directlist respectively.
@@ -161,7 +157,7 @@ class Electron:
 
         # If the random number is less than the probability, the particle 
         # scatters
-        if rand < scattering Probability:
+        if rand < scatteringProbability:
             # Find new random scattering direction. Phi-azimuth 
             # angle [0, 2pi). Theta-altitude. [0, pi).
             phi = uniform(0, 2 * pi)
@@ -172,7 +168,7 @@ class Electron:
             # Convert angles to directional unit vector in 
             # Cartesian coordinates. Theta and phi are respect to incidental
             # direction of electron prior to scattering.
-            if self.vel[2]/self.speed ** 2 == 1:
+            if (self.vel[2]/self.speed) ** 2 == 1:
                 self.vel[0] = self.speed * sin(theta) * cos(phi) 
                 self.vel[1] = self.speed * sign(uz) * sin(theta) * sin(phi)
                 self.vel[2] = self.speed * sign(uz) * cos(theta)
@@ -188,7 +184,9 @@ class Electron:
                                             uz + sin(theta) * 
                                             sin(phi) * ux) / (
                                     sqrt(1 - uz ** 2) + uy * cos(theta))
-                self.vel[2] = self.speed * (-sin(theta) * cos(phi) * sqrt(1 - uz ** 2) + uz * cos(theta))
+                self.vel[2] = self.speed * (-sin(theta) * cos(phi) * 
+                                            sqrt(1 - uz ** 2) + 
+                                            uz * cos(theta))
 
             if self.box.experi:
                 xi = uniform(0, 1)
