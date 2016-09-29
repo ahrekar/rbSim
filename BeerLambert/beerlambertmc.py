@@ -27,14 +27,10 @@ b = 1.2 ** 2 * 2.84304
 
 # Combines conditions of electron propagation into a single object, Box.
 class Box:
-    def __init__(self, ndensity, count, rbndensity=0, n2ndensity=10 ** 16, aperture=0.2,
-                 isotropic=True, magnetfield=0, electrfield=0, polarexperi=False, path3d=False):
-        # Number density of arbitrary attenuating particle. When polarexperi=False
-        self.nden = ndensity
-        # Number density of Rubidium atoms. When polarexperi=True
-        self.rbnden = rbndensity
-        # Number density of Nitrogen molecules. When polarexperi=True
-        self.n2nden = n2ndensity
+    def __init__(self, count, rbndensity=0, n2ndensity=10 ** 16, aperture=0.2,
+                 isotropic=True, magnetfield=0, electrfield=0, path3d=False):
+        # An array containing the number densities of various particles in the chamber. Right now, n2 and Rb.
+        self.ndensity = [n2ndensity,rbndensity]
         # Number of electrons to be emitted through the chamber
         self.count = count
         # Scattering cross section of arbitrary attenuating particle. When polarexperi=False
@@ -51,9 +47,6 @@ class Box:
         self.magnet = magnetfield
         # Magnitude of electric field parallel to z axis, lengthwise axis of box.
         self.electr = electrfield
-        # Boolean variable: True=consider two attenuating species (Rubidium and Nitrogen molecules) spiin polarization of
-        # electrons, and elastic and inelastic scattering. False=consider single arbitrary attenuating species.
-        self.experi = polarexperi
         # Boolean variable: True=record path of electron in addition to merely recording scattering points.
         # Also plotting of electron path in presence of magnetic field in 3d graphics.
         self.rp = path3d
@@ -102,9 +95,14 @@ class Electron:
     # Move electron to next scattering point and calculate new scattering direction. Record scattering point and
     # previous direction in scattlist and directlist respectively.
     def movestep(self):
-        
+
+        # First, we need to find out if we have particles in our chamber. We sum all of the number densities.
+        totalnDen = 0
+        for nden in self.ndensity:
+            totalnDen += nden
+
         # In absence of attenuating species, calculate step size of electron to simply travel beyond length of box.
-        if self.box.nden == 0:
+        if totalnDen == 0:
             if self.box.magnet != 0:
                 s = 1.1 * (self.box.length + self.arcpsec(self.direct) * self.tblength(self.box.length, self.direct))
             else:
@@ -160,9 +158,9 @@ class Electron:
         if self.box.experi:
             xi = uniform(0, 1)
             # Summed cross sectional area of all attenuating per cubic cm.
-            alpha = self.rbsig() * self.box.rbnden + self.n2nsig() * self.box.n2nden
+            alpha = self.rbsig() * self.box.ndensity[1] + self.n2nsig() * self.box.ndensity[0]
             # Electron collides with Nitrogen molecule probability (self.n2nsig() * self.box.n2nden) / alpha:
-            if xi < (self.n2nsig() * self.box.n2nden) / alpha:
+            if xi < (self.n2nsig() * self.box.ndensity[0]) / alpha:
                 # Elastically scatter electron and adjust velocity after scattering. All Nitrogen molecules are assumed
                 # motionless prior to scattering event.
                 if self.energyev() < a or self.energyev() > b:
@@ -194,9 +192,9 @@ class Electron:
         xi = -uniform(-1, 0)
         # Alpha may be considered as the cross section of all attenuating particles within a cubic cm.
         if self.box.experi:
-            alpha = self.rbsig() * self.box.rbnden + self.n2nsig() * self.box.n2nden
+            alpha = self.rbsig() * self.box.ndensity[1] + self.n2nsig() * self.box.ndensity[0]
         else:
-            alpha = self.box.sigt * self.box.nden
+            alpha = self.box.sigt * self.box.ndensity[0]
         return -log(xi) / alpha
 
     # Randomly sample theta/altitude angle of scattering direction. Derived via Inverse transform sampling.
