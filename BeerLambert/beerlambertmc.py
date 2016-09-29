@@ -6,20 +6,28 @@ from matplotlib.pyplot import *
 cmr = -1.75882002411 * 10 ** 11
 # Electron mass
 emass = 9.1094 * 10 ** -31
-# Rubidium atom mass
-rbmass = 85.4678
-# Nitrogen molecule mass
-n2mass = 28.0134
+
+# Avogadro's Number (molecules/mole)
+N_a = 6.02e23
+# Number of grams per kg
+gPerkg=1e3
+# Rubidium molar mass (g/mole)
+rbmmass = 85.4678  
+# Rubidium atom mass (kg)
+rbmass = rbmmass/N_a/gPerkg
+# N2 molar mass (g/mole)
+n2mmass = 28.0134
+# N2 molar mass (kg)
+n2mass = n2mmass/N_a/gPerkg
+
 # J per eV
 jpev = 6.242 * 10 ** 18
 a = 0.9 ** 2 * 2.84304
 b = 1.2 ** 2 * 2.84304
-# The size of the discrete time step, measured in seconds.
-dt=1e-6
 
 # Combines conditions of electron propagation into a single object, Box.
 class Box:
-    def __init__(self, ndensity, count, rbndensity=10 ** 13, n2ndensity=10 ** 16, aperture=0.2,
+    def __init__(self, ndensity, count, rbndensity=0, n2ndensity=10 ** 16, aperture=0.2,
                  isotropic=True, magnetfield=0, electrfield=0, polarexperi=False, path3d=False):
         # Number density of arbitrary attenuating particle. When polarexperi=False
         self.nden = ndensity
@@ -49,17 +57,20 @@ class Box:
         # Boolean variable: True=record path of electron in addition to merely recording scattering points.
         # Also plotting of electron path in presence of magnetic field in 3d graphics.
         self.rp = path3d
+        # A list of electrons that made it through
+        self.electronsThru = []
 
     # Find fraction of "count" number of electrons transmitted through aperture of given box. Return fraction.
     def transmissvalue(self):
         thru = 0
-        for i in range(1, self.count + 1):
+        for i in range(self.count):
             p = Electron(self)
             while p.alive:
                 p.movestep()
                 p.inbox()
             if p.thruaper:
                 thru += 1
+                self.electronsThru.append(p)
         return thru / self.count
 
 
@@ -154,7 +165,7 @@ class Electron:
             if xi < (self.n2nsig() * self.box.n2nden) / alpha:
                 # Elastically scatter electron and adjust velocity after scattering. All Nitrogen molecules are assumed
                 # motionless prior to scattering event.
-                if self.energyev() < a and b < self.energyev():
+                if self.energyev() < a or self.energyev() > b:
                     # Previous scattering directional unit vector
                     d = self.directlist[-1]
                     # Component parallel to z axis of Nitrogen velocity after scattering event. Used to determine
@@ -169,7 +180,7 @@ class Electron:
                     self.speed = sqrt(vx ** 2 + vy ** 2 + vz ** 2)
                 # Terminate electron. Total inelastic scattering when energy of electron between a and b.
                 else:
-                    self.alive = False
+                    self.speed = 0
             # Electron collides with Rubidium atom. Switch spin polarization if opposites.
             else:
                 if xi < 0.5 and self.color == 'r':
