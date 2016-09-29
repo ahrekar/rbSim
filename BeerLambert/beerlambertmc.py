@@ -27,14 +27,14 @@ b = 1.2 ** 2 * 2.84304
 
 # Combines conditions of electron propagation into a single object, Box.
 class Box:
-    def __init__(self, count, rbndensity=0, n2ndensity=10 ** 16, aperture=0.2,
+    def __init__(self, count, rbndensity=0, buffernDensity=10 ** 16, aperture=0.2,
                  isotropic=True, magnetfield=0, electrfield=0, path3d=False):
-        # An array containing the number densities of various particles in the chamber. Right now, n2 and Rb.
-        self.ndensity = [n2ndensity,rbndensity]
+        # The number density of rubidium in the cell.
+        self.rbnDensity = rbndensity
+        # The number density of bufferGas in the cell
+        self.buffernDensity = buffernDensity
         # Number of electrons to be emitted through the chamber
         self.count = count
-        # Scattering cross section of arbitrary attenuating particle. When polarexperi=False
-        self.sigt = 10 ** -16
         # Radius of aperture
         self.aper = aperture
         # Radius of cylindrical chamber
@@ -97,9 +97,7 @@ class Electron:
     def movestep(self):
 
         # First, we need to find out if we have particles in our chamber. We sum all of the number densities.
-        totalnDen = 0
-        for nden in self.ndensity:
-            totalnDen += nden
+        totalnDen = rbnDensity + buffernDensity
 
         # In absence of attenuating species, calculate step size of electron to simply travel beyond length of box.
         if totalnDen == 0:
@@ -158,9 +156,9 @@ class Electron:
         if self.box.experi:
             xi = uniform(0, 1)
             # Summed cross sectional area of all attenuating per cubic cm.
-            alpha = self.rbsig() * self.box.ndensity[1] + self.n2nsig() * self.box.ndensity[0]
-            # Electron collides with Nitrogen molecule probability (self.n2nsig() * self.box.n2nden) / alpha:
-            if xi < (self.n2nsig() * self.box.ndensity[0]) / alpha:
+            alpha = self.rbCrossSection() * self.box.rbnDensity + self.bufferCrossSection() * self.box.buffernDensity
+            # Electron collides with Nitrogen molecule probability (self.bufferCrossSection() * self.box.n2nden) / alpha:
+            if xi < (self.bufferCrossSection() * self.box.buffernDensity) / alpha:
                 # Elastically scatter electron and adjust velocity after scattering. All Nitrogen molecules are assumed
                 # motionless prior to scattering event.
                 if self.energyev() < a or self.energyev() > b:
@@ -191,10 +189,7 @@ class Electron:
     def randomstepsize(self):
         xi = -uniform(-1, 0)
         # Alpha may be considered as the cross section of all attenuating particles within a cubic cm.
-        if self.box.experi:
-            alpha = self.rbsig() * self.box.ndensity[1] + self.n2nsig() * self.box.ndensity[0]
-        else:
-            alpha = self.box.sigt * self.box.ndensity[0]
+        alpha = self.rbCrossSection() * self.box.rbnDensity + self.bufferCrossSection() * self.box.buffernDensity
         return -log(xi) / alpha
 
     # Randomly sample theta/altitude angle of scattering direction. Derived via Inverse transform sampling.
@@ -208,11 +203,11 @@ class Electron:
             return arccos((-2 + (16 - 16 * xi) ** 0.5) / 2)
 
     # Determine scattering cross section of Rubidium atom- dependent on electron velocity (cm/s)
-    def rbsig(self):
+    def rbCrossSection(self):
         return exp(-self.speed / 10 ** 8) * 10 ** 14
 
     # Determine scattering cross section of Nitrogen molecule. Dependent on energy of electron.
-    def n2nsig(self):
+    def bufferCrossSection(self):
         # Completely inelastic scattering cross section
         if a < self.energyev() < b:
             return 10 ** -15
