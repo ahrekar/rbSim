@@ -20,21 +20,19 @@ n2mmass = 28.0134
 # N2 molar mass (kg)
 n2mass = n2mmass/N_a/gPerkg
 
-# J per eV
-jpev = 6.242 * 10 ** 18
+# eV per J
+eVpJ = 6.242 * 10 ** 18
 a = 0.9 ** 2 * 2.84304
 b = 1.2 ** 2 * 2.84304
 
 # Combines conditions of electron propagation into a single object, Box.
 class Box:
-    def __init__(self, count, rbndensity=0, buffernDensity=10 ** 16, aperture=0.2,
+    def __init__(self, rbndensity=0, buffernDensity=10 ** 16, aperture=0.2,
                  isotropic=True, magnetfield=0, electrfield=0, path3d=False):
         # The number density of rubidium in the cell.
         self.rbnDensity = rbndensity
         # The number density of bufferGas in the cell
         self.buffernDensity = buffernDensity
-        # Number of electrons to be emitted through the chamber
-        self.count = count
         # Radius of aperture
         self.aper = aperture
         # Radius of cylindrical chamber
@@ -52,20 +50,6 @@ class Box:
         self.rp = path3d
         # A list of electrons that made it through
         self.electronsThru = []
-
-    # Find fraction of "count" number of electrons transmitted through aperture of given box. Return fraction.
-    def transmissvalue(self):
-        thru = 0
-        for i in range(self.count):
-            p = Electron(self)
-            while p.alive:
-                p.movestep()
-                p.inbox()
-            if p.thruaper:
-                thru += 1
-                self.electronsThru.append(p)
-        return thru / self.count
-
 
 class Electron:
     def __init__(self, box):
@@ -97,7 +81,7 @@ class Electron:
     def movestep(self):
 
         # First, we need to find out if we have particles in our chamber. We sum all of the number densities.
-        totalnDen = rbnDensity + buffernDensity
+        totalnDen = self.box.rbnDensity + self.box.buffernDensity
 
         # In absence of attenuating species, calculate step size of electron to simply travel beyond length of box.
         if totalnDen == 0:
@@ -153,36 +137,37 @@ class Electron:
                               ux) / sqrt(1 - uz ** 2) + uy * cos(theta)
             self.direct[2] = -sin(theta) * cos(phi) * sqrt(1 - uz ** 2) + uz * cos(theta)
 
-        if self.box.experi:
-            xi = uniform(0, 1)
-            # Summed cross sectional area of all attenuating per cubic cm.
-            alpha = self.rbCrossSection() * self.box.rbnDensity + self.bufferCrossSection() * self.box.buffernDensity
-            # Electron collides with Nitrogen molecule probability (self.bufferCrossSection() * self.box.n2nden) / alpha:
-            if xi < (self.bufferCrossSection() * self.box.buffernDensity) / alpha:
-                # Elastically scatter electron and adjust velocity after scattering. All Nitrogen molecules are assumed
-                # motionless prior to scattering event.
-                if self.energyev() < a or self.energyev() > b:
-                    # Previous scattering directional unit vector
-                    d = self.directlist[-1]
-                    # Component parallel to z axis of Nitrogen velocity after scattering event. Used to determine
-                    # post scattering velocity of electron with components vx, vy, and vz
-                    vz2 = (2 * self.speed * d[2] + 2 * tan(theta) * (cos(phi) * self.speed * d[0] +
-                                          sin(phi) * self.speed * d[1])) / \
-                          ((1 + tan(theta) ** 2) * (1 + (n2mass / emass)))
-                    vx = self.speed * d[0] - tan(theta) * cos(phi) * (n2mass / emass) * vz2
-                    vy = self.speed * d[1] - tan(theta) * sin(phi) * (n2mass / emass) * vz2
-                    vz = self.speed * d[2] - (n2mass / emass) * vz2
-                    # Find magnitude of electron velocity post scattering.
-                    self.speed = sqrt(vx ** 2 + vy ** 2 + vz ** 2)
-                # Terminate electron. Total inelastic scattering when energy of electron between a and b.
-                else:
-                    self.speed = 0
-            # Electron collides with Rubidium atom. Switch spin polarization if opposites.
+        xi = uniform(0, 1)
+        # Summed cross sectional area of all attenuating per cubic cm.
+        alpha = self.rbCrossSection() * self.box.rbnDensity + self.bufferCrossSection() * self.box.buffernDensity
+        if alpha == 0:
+            alpha = 1
+        # Electron collides with Nitrogen molecule probability (self.bufferCrossSection() * self.box.n2nden) / alpha:
+        if xi < (self.bufferCrossSection() * self.box.buffernDensity) / alpha:
+            # Elastically scatter electron and adjust velocity after scattering. All Nitrogen molecules are assumed
+            # motionless prior to scattering event.
+            if self.energyev() < a or self.energyev() > b:
+                # Previous scattering directional unit vector
+                d = self.directlist[-1]
+                # Component parallel to z axis of Nitrogen velocity after scattering event. Used to determine
+                # post scattering velocity of electron with components vx, vy, and vz
+                vz2 = (2 * self.speed * d[2] + 2 * tan(theta) * (cos(phi) * self.speed * d[0] +
+                                      sin(phi) * self.speed * d[1])) / \
+                      ((1 + tan(theta) ** 2) * (1 + (n2mass / emass)))
+                vx = self.speed * d[0] - tan(theta) * cos(phi) * (n2mass / emass) * vz2
+                vy = self.speed * d[1] - tan(theta) * sin(phi) * (n2mass / emass) * vz2
+                vz = self.speed * d[2] - (n2mass / emass) * vz2
+                # Find magnitude of electron velocity post scattering.
+                self.speed = sqrt(vx ** 2 + vy ** 2 + vz ** 2)
+            # Terminate electron. Total inelastic scattering when energy of electron between a and b.
             else:
-                if xi < 0.5 and self.color == 'r':
-                    self.color = 'b'
-                elif xi > 0.5 and self.color == 'b':
-                    self.color = 'r'
+                self.speed = 0
+        # Electron collides with Rubidium atom. Switch spin polarization if opposites.
+        else:
+            if xi < 0.5 and self.color == 'r':
+                self.color = 'b'
+            elif xi > 0.5 and self.color == 'b':
+                self.color = 'r'
 
     # Randomly sample distance to next scattering event. Derived via Inverse transform sampling from the Beer Lambert
     # Law.
@@ -217,7 +202,7 @@ class Electron:
 
     # Calculate energy of electron in eV.
     def energyev(self):
-        return jpev * (0.5 * emass * (self.speed / 100) ** 2)
+        return eVpJ * (0.5 * emass * (self.speed / 100) ** 2)
 
     # Calculate x location of electron in presence of magnetic and electric field after time t given scattering
     # direction
@@ -259,12 +244,19 @@ class Electron:
         else:
             return (s * sign(d[2])) / (d[2] * self.speed)
 
-    # Calculate time required to travel given length along z axis given initial scattering direction.
+    # Calculate time required to travel given length along z axis (z) given initial scattering direction (d).
     def tblength(self, z, d):
         if self.box.electr != 0:
-            return (-d[2] * self.speed + sqrt(
+            value1 =(-d[2] * self.speed + sqrt(
                 (d[2] * self.speed) ** 2 + 2 * cmr * self.box.electr * z)) / (
                        cmr * self.box.electr)
+            value2 =(-d[2] * self.speed - sqrt(
+                (d[2] * self.speed) ** 2 + 2 * cmr * self.box.electr * z)) / (
+                       cmr * self.box.electr)
+            if value1 > 0:
+                return value1
+            else:
+                return value2
         else:
             return (z * sign(d[2])) / (d[2] * self.speed)
 
@@ -302,10 +294,10 @@ class Electron:
         if self.scattpt[2] > self.box.length:
             try:
                 # When magnetic and electric fields are nonzero, calculate location of electron at the length of the
-                # box along trajectory. Compare distance from (0, 0, box.length). Return true is less than aperture
+                # box along trajectory. Compare distance from (0, 0, box.length). Return true if less than aperture
                 # radius.
                 if self.box.electr != 0 or self.box.magnet != 0:
-                    t = self.tblength(self.box.length - self.scattlist[-2][2], self.directlist[-1])
+                    t = self.tblength(self.scattlist[-2][2] - self.box.length, self.directlist[-1])
                     r = sqrt((self.x(t, self.directlist[-1]) + self.scattlist[-2][0]) ** 2 +
                              (self.y(t, self.directlist[-1]) + self.scattlist[-2][1]) ** 2)
                     if r < self.box.aper:

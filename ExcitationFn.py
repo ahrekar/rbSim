@@ -5,7 +5,7 @@ from BeerLambert.beerlambertmc import *
 # Law for larger apertures
 def excitationFn(count=50000, isotrop=False, electr=100, magnet=0):
     # Set conditions of attenuating chamber
-    b = Box(10**16, count, isotropic=isotrop, electrfield=electr, magnetfield=magnet,polarexperi=True)
+    b = Box(buffernDensity=0, isotropic=isotrop, electrfield=electr, magnetfield=magnet)
     electronsThrough=[]
     for i in range(1,count+1):
         p=Electron(b)
@@ -26,8 +26,12 @@ def excitationFn(count=50000, isotrop=False, electr=100, magnet=0):
                 print('.')
             else:
                 print('.',end="",flush=True)
-    for elec in electronsThrough:
-        print(elec.energyev())
-        
 
-excitationFn(count=300,electr=100,magnet=0)
+    print("# Electrons through:{0}".format(len(electronsThrough)))
+    averageEnergy=0
+    for elec in electronsThrough:
+        averageEnergy+=elec.energyev()
+    if averageEnergy:
+        print(averageEnergy/len(electronsThrough))
+
+excitationFn(count=30000,electr=100,magnet=0)
