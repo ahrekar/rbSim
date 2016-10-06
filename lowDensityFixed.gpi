@@ -1,0 +1,1 @@
+plot 'lowDensityFixed2.dat' u (log($1)):2

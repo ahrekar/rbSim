@@ -1,0 +1,1 @@
+plot 'averageEnergyVsDensity.dat' u (log($1)):(log($2))

@@ -4,7 +4,7 @@ from BeerLambert.beerlambertmc import *
 # Law for larger apertures
 def excitationFn(count=50000, buffernDensity=1e10, isotrop=False, sweepingPotential=3, magnet=0, filamentBias=-120, targetOffset=100, filename="exFn.dat"):
     fileSummary = open(filename,'a')
-    fileRaw = open("electrons",'w')
+    fileRaw = open("electrons.dat",'w')
     # The length of the chamber in m
     boxLength=.03
     # Set conditions of attenuating chamber
@@ -76,7 +76,8 @@ def findingPotentialProblem():
     file = open(filename,'w')
     file.write("Density\tAvgT\tAvgU\n")
     file.close()
-    excitationFn(count=1*10**5,sweepingPotential=3,magnet=0,buffernDensity=3e15)
+    excitationFn(count=1*10**6,sweepingPotential=3,magnet=1e-4,buffernDensity=2.833e15)
+
 
 #PotentialVSDensity()
 findingPotentialProblem()
