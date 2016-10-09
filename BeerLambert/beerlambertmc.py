@@ -103,11 +103,16 @@ class Electron:
         else:# Calculate a randomized distance between scattering events when number density of species is greater than 0
             s = self.randomstepsize()
         
-        # Since the electron has interacted with an object at the potential of the target, 
-
         if self.box.magnet != 0 or self.box.electr != 0:
-            # Find time needed to travel given step size with nonzero magnetic and/or electric field
+            # Find time needed to travel given step size 
+            # with nonzero magnetic and/or electric field
             t = self.tpath(s, self.direct)
+            finalZPosition = self.z(t, self.direct)
+
+            if finalZPosition > self.box.length:
+                t = self.tblength(self.box.length*1.0001-self.scattpt[2],self.direct)
+
+
 
             # Interpolate path between scatter points of electron within magnetic field
             if self.box.rp and self.box.magnet != 0:
@@ -163,8 +168,9 @@ class Electron:
             if self.energyev() < a or self.energyev() > b:
                 # Previous scattering directional unit vector
                 d = self.directlist[-1]
-                # Component parallel to z axis of Nitrogen velocity after scattering event. Used to determine
-                # post scattering velocity of electron with components vx, vy, and vz
+                # Component parallel to z axis of Nitrogen velocity after 
+                # scattering event. Used to determine post scattering 
+                # velocity of electron with components vx, vy, and vz
                 vz2 = (2 * self.speed * d[2] + 2 * tan(theta) * (cos(phi) * self.speed * d[0] +
                     sin(phi) * self.speed * d[1])) / \
                             ((1 + tan(theta) ** 2) * (1 + (n2mass / emass)))
@@ -321,12 +327,15 @@ class Electron:
                 # box along trajectory. Compare distance from (0, 0, box.length). Return true if less than aperture
                 # radius.
                 if self.box.electr != 0 or self.box.magnet != 0:
-                    t = self.tblength(self.scattlist[-1][2] - self.box.length, self.direct)
+                    t = self.tblength(self.box.length - self.scattlist[-1][2], self.direct)
                     r = sqrt((self.x(t, self.direct) + self.scattlist[-1][0]) ** 2 +
                             (self.y(t, self.direct) + self.scattlist[-1][1]) ** 2)
                     if r < self.box.aper:
                         self.potential = self.potentiallist[-1]
-                        #print(str(self.potential))
+                        #print("Time: {:.3e}".format(t))
+                        #print("Speed Before: {:.3e}".format(self.speed))
+                        self.speed = self.newvel(t, self.direct)
+                        #print("Speed After: {:.3e}".format(self.speed))
                         return True
                 # When magnetic and electric fields are zero, calculate location of electron at the length of the box
                 # along trajectory. Compare distance from (0, 0, box.length). Return true if less than aperture radius.
@@ -337,6 +346,9 @@ class Electron:
                     r = sqrt((r0[0] + t * (r1[0] - r0[0])) ** 2 + (r0[1] + t * (r1[1] - r0[1])) ** 2)
                     if r < self.box.aper:
                         self.potential = self.potentiallist[-1]
+                        print(str(t))
+                        self.speed = self.newvel(t, self.direct)
+                        print(str(self.speed))
                         return True
                     return False
             except IndexError:
