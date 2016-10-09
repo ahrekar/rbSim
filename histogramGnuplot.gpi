@@ -1,7 +1,12 @@
-binwidth=1
+set key off
+set terminal png enhanced
+set title "Electrons Transferred Through Aperture" font "Cairo,18"
+set output "electronCollisions.png"
+binwidth=.01
 set yrange [0:*]
-#set xrange [0:.2]
+set xrange [0:.5]
+set xlabel "Electron Energy (eV)"
 set boxwidth binwidth
 set style fill solid 1.0
 bin(x,width)=width*floor(x/width)
-plot 'electrons.dat' using (bin($3,binwidth)):(1.0) smooth freq with boxes
+plot 'electrons.dat' using (bin($1,binwidth)):(1.0) smooth freq with boxes

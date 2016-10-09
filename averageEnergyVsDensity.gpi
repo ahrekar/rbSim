@@ -1,1 +1,9 @@
-plot 'averageEnergyVsDensity.dat' u (log($1)):(log($2))
+set logscale xy
+set key off
+set terminal png enhanced
+set output "Tvsn.png"
+set xlabel "Number Density ( particles/cm^3 )" offset 0,-.5
+set xtics rotate by 45 offset -4,-1.8
+set ylabel "Average Kinetic Energy ( Joule/particle )"
+set title "Avg. Kinetic Energy vs. Number Density"
+plot 'averageEnergyVsDensity.dat' u 1:2
