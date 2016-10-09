@@ -40,19 +40,21 @@ def excitationFn(count=50000, buffernDensity=1e10, isotrop=False, sweepingPotent
     fileRaw.write("T\tU\tSteps\n")
 
     print("% Electrons through: {0:.3}".format(len(electronsThrough)/count))
-    averageEnergy=0
-    averagePotential=0
+    sumEnergy=0
+    sumPotential=0
     for elec in electronsThrough:
         fileRaw.write("{}\t{}\t{}\n".format(elec.energyev(),elec.potential,len(elec.scattlist)))
-        averageEnergy+=elec.energyev()
-        averagePotential+=elec.potential
+        sumEnergy+=elec.energyev()
+        sumPotential+=elec.potential
     
     fileSummary.write('{:.3e}'.format(buffernDensity))
     fileSummary.write('\t')
     if len(electronsThrough):
-        fileSummary.write('{:.3e}'.format(averageEnergy/len(electronsThrough)))
+        fileSummary.write('{:.3e}'.format(len(electronsThrough)/count))
         fileSummary.write('\t')
-        fileSummary.write('{:.3e}'.format(averagePotential/len(electronsThrough)))
+        fileSummary.write('{:.3e}'.format(sumEnergy/len(electronsThrough)))
+        fileSummary.write('\t')
+        fileSummary.write('{:.3e}'.format(sumPotential/len(electronsThrough)))
     else:
         fileSummary.write('{:.3e}'.format(0))
         fileSummary.write('\t')
@@ -62,11 +64,20 @@ def excitationFn(count=50000, buffernDensity=1e10, isotrop=False, sweepingPotent
     fileRaw.close()
     return 0
 
+def KineticVsDensity():
+    fname='TvsN.dat'
+    file = open(fname,'w')
+
+    file.write("Density\tAveragePotentialEnergy\n")
+    file.close()
+    for i in linspace(0,17,40):
+        excitationFn(filename=fname, count=10000,sweepingPotential=3,magnet=0,buffernDensity=10**i)
+
 def PotentialVSDensity():
     filename='exFn.dat'
     file = open(filename,'w')
 
-    file.write("Density\tAveragePotentialEnergy\n")
+    file.write("Density\tPercentThrough\tAvgT\tAvgU\n")
     file.close()
     for i in linspace(0,17,40):
         excitationFn(count=1000,sweepingPotential=3,magnet=0,buffernDensity=10**i)
@@ -74,10 +85,12 @@ def PotentialVSDensity():
 def findingPotentialProblem():
     filename='exFn.dat'
     file = open(filename,'w')
-    file.write("Density\tAvgT\tAvgU\n")
+    file.write("Density\tPercentThrough\tAvgT\tAvgU\n")
     file.close()
-    excitationFn(count=1*10**6,sweepingPotential=3,magnet=1e-4,buffernDensity=2.833e15)
-
+    excitationFn(count=1*10**5,sweepingPotential=3,magnet=1e-5,buffernDensity=2.833e15)
 
 #PotentialVSDensity()
-findingPotentialProblem()
+#findingPotentialProblem()
+KineticVsDensity()
+#PercentThroughVsDensity()
+#excitationFn(filename="TvsN.dat", count=1000,sweepingPotential=3,magnet=0,buffernDensity=10**8)
