@@ -4,7 +4,7 @@ from BeerLambert.beerlambertmc import *
 # Law for larger apertures
 def excitationFn(count=50000, buffernDensity=1e10, isotrop=False, sweepingPotential=3, magnet=0, filamentBias=-120, targetOffset=100, filename="exFn.dat"):
     fileSummary = open(filename,'a')
-    fileRawString="electrons_buff{}_sweep{}_magnet{}_filBias{}_targOff{}.dat".format(buffernDensity,sweepingPotential,magnet,filamentBias,targetOffset)
+    fileRawString="electronFiles/electrons_buff{:.3e}_sweep{}_magnet{}_filBias{}_targOff{}.dat".format(buffernDensity,sweepingPotential,magnet,filamentBias,targetOffset)
     fileRaw = open(fileRawString,'w')
     # The length of the chamber in cm
     boxLength=3
@@ -73,7 +73,7 @@ def excitationFn(count=50000, buffernDensity=1e10, isotrop=False, sweepingPotent
     fileRaw.close()
     return 0
 
-def PotentialVSDensity():
+def VaryingDensity():
     filename='exFn.dat'
     file = open(filename,'w')
 
@@ -82,15 +82,12 @@ def PotentialVSDensity():
     for i in linspace(0,17,20):
         excitationFn(count=1000,sweepingPotential=3,magnet=0,buffernDensity=10**i)
 
-def findingPotentialProblem():
+def singleRun():
     filename='exFn.dat'
     file = open(filename,'w')
     file.write("Density\tPercentThrough\tAvgT\tAvgU\n")
     file.close()
     excitationFn(count=1*10**4,sweepingPotential=3,magnet=0,buffernDensity=1e17)
 
-PotentialVSDensity()
-#findingPotentialProblem()
-#KineticVsDensity()
-#PercentThroughVsDensity()
-#excitationFn(filename="TvsN.dat", count=1000,sweepingPotential=3,magnet=0,buffernDensity=10**8)
+VaryingDensity()
+#singleRun()
