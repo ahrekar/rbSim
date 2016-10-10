@@ -4,11 +4,12 @@ from BeerLambert.beerlambertmc import *
 # Law for larger apertures
 def excitationFn(count=50000, buffernDensity=1e10, isotrop=False, sweepingPotential=3, magnet=0, filamentBias=-120, targetOffset=100, filename="exFn.dat"):
     fileSummary = open(filename,'a')
-    fileRaw = open("electrons.dat",'w')
-    # The length of the chamber in m
-    boxLength=.03
+    fileRawString="electrons_buff{}_sweep{}_magnet{}_filBias{}_targOff{}.dat".format(buffernDensity,sweepingPotential,magnet,filamentBias,targetOffset)
+    fileRaw = open(fileRawString,'w')
+    # The length of the chamber in cm
+    boxLength=3
     # Set conditions of attenuating chamber
-    b = Box(buffernDensity=buffernDensity, isotropic=isotrop, electrfield=-sweepingPotential/boxLength, magnetfield=magnet, potential=filamentBias+targetOffset)
+    b = Box(buffernDensity=buffernDensity, isotropic=isotrop, electrfield=-sweepingPotential/boxLength, magnetfield=magnet, potential=filamentBias+targetOffset, sweepPotential=sweepingPotential)
     electronsThrough=[]
     for i in range(count):
         p=Electron(b,potential=-120)
@@ -42,11 +43,13 @@ def excitationFn(count=50000, buffernDensity=1e10, isotrop=False, sweepingPotent
     print("% Electrons through: {0:.3}".format(len(electronsThrough)/count))
     sumEnergy=0
     sumPotential=0
+    sumCollisions=0
     for elec in electronsThrough:
-        fileRaw.write("{}\t{}\t{}\n".format(elec.energyev(),elec.potential,len(elec.scattlist)))
+        fileRaw.write("{}\t{}\t{}\n".format(elec.energyev(),elec.potential,len(elec.scattlist)-1))
         sumEnergy+=elec.energyev()
         sumPotential+=elec.potential
-    
+        sumCollisions+=(len(elec.scattlist)-1)  # Subtract one because the initial
+                                                # point doesn't count.
     fileSummary.write('{:.3e}'.format(buffernDensity))
     fileSummary.write('\t')
     if len(electronsThrough):
@@ -55,7 +58,13 @@ def excitationFn(count=50000, buffernDensity=1e10, isotrop=False, sweepingPotent
         fileSummary.write('{:.3e}'.format(sumEnergy/len(electronsThrough)))
         fileSummary.write('\t')
         fileSummary.write('{:.3e}'.format(sumPotential/len(electronsThrough)))
+        fileSummary.write('\t')
+        fileSummary.write('{:.3e}'.format(sumCollisions/len(electronsThrough)))
     else:
+        fileSummary.write('{:.3e}'.format(0))
+        fileSummary.write('\t')
+        fileSummary.write('{:.3e}'.format(0))
+        fileSummary.write('\t')
         fileSummary.write('{:.3e}'.format(0))
         fileSummary.write('\t')
         fileSummary.write('{:.3e}'.format(0))
@@ -64,22 +73,13 @@ def excitationFn(count=50000, buffernDensity=1e10, isotrop=False, sweepingPotent
     fileRaw.close()
     return 0
 
-def KineticVsDensity():
-    fname='TvsN.dat'
-    file = open(fname,'w')
-
-    file.write("Density\tAveragePotentialEnergy\n")
-    file.close()
-    for i in linspace(0,17,40):
-        excitationFn(filename=fname, count=10000,sweepingPotential=3,magnet=0,buffernDensity=10**i)
-
 def PotentialVSDensity():
     filename='exFn.dat'
     file = open(filename,'w')
 
-    file.write("Density\tPercentThrough\tAvgT\tAvgU\n")
+    file.write("Density\tPercentThrough\tAvgT\tAvgU\tAvgCollisions\n")
     file.close()
-    for i in linspace(0,17,40):
+    for i in linspace(0,17,20):
         excitationFn(count=1000,sweepingPotential=3,magnet=0,buffernDensity=10**i)
 
 def findingPotentialProblem():
@@ -87,10 +87,10 @@ def findingPotentialProblem():
     file = open(filename,'w')
     file.write("Density\tPercentThrough\tAvgT\tAvgU\n")
     file.close()
-    excitationFn(count=1*10**5,sweepingPotential=3,magnet=1e-5,buffernDensity=2.833e15)
+    excitationFn(count=1*10**4,sweepingPotential=3,magnet=0,buffernDensity=1e17)
 
-#PotentialVSDensity()
+PotentialVSDensity()
 #findingPotentialProblem()
-KineticVsDensity()
+#KineticVsDensity()
 #PercentThroughVsDensity()
 #excitationFn(filename="TvsN.dat", count=1000,sweepingPotential=3,magnet=0,buffernDensity=10**8)
