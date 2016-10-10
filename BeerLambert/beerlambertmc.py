@@ -29,7 +29,7 @@ b = 1.2 ** 2 * 2.84304
 class Box:
     def __init__(self, rbndensity=0, buffernDensity=10 ** 16, aperture=0.2,
             isotropic=True, magnetfield=0, electrfield=0, path3d=False,
-            potential=-20):
+            potential=-20, sweepPotential=3):
         # The number density of rubidium in the cell.
         self.rbnDensity = rbndensity
         # The number density of bufferGas in the cell
@@ -45,6 +45,7 @@ class Box:
         # Magnitude of magnetic field parallel to z axis, lengthwise axis of box.
         self.magnet = magnetfield
         # Magnitude of electric field parallel to z axis, lengthwise axis of box.
+        # measured in V/cm
         self.electr = electrfield
         # Boolean variable: True=record path of electron in addition to merely recording scattering points.
         # Also plotting of electron path in presence of magnetic field in 3d graphics.
@@ -133,8 +134,11 @@ class Electron:
             self.scattpt[2] += self.direct[2] * s
 
     def scatter(self):
-        # set the electron's potential to that of the target.
-        self.potential = self.box.potential
+        # set the electron's potential to that of the target. This is equal to
+        # The box potential, plus the potential obtained from the sweeping 
+        # potential, which will vary according to the position. 
+        self.potential = (self.box.potential + self.box.electr*self.box.length/2 -
+                            self.scattpt[2]*self.box.electr)
         # Find new random scattering direction. Phi-azimuth angle [0, 2pi). Theta-altitude. [0, pi).
         phi = uniform(0, 2 * pi)
         theta = self.randomtheta()
