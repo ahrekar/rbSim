@@ -18,24 +18,10 @@ def excitationFn(count=50000, buffernDensity=1e10, isotrop=False, sweepingPotent
         while p.alive:
             p.movestep()
             if p.thruaper:
-                """
-                if (i+1)%75 == 0:
-                    print('*')
-                else:
-                    print('*',end="",flush=True)
-                """
                 electronsThrough.append(p)
-                p.inbox()
             else:
-                """
-                if (i+1)%75 == 0:
-                    print('.')
-                else:
-                    print('.',end="",flush=True)
-                """
                 p.scatter()
                 p.inbox()
-            #print("Number of Steps for Electron {}: {}".format(i,len(p.scattlist)))
             steps+=1
 
     fileRaw.write("T\tU\tSteps\n")
@@ -82,12 +68,22 @@ def VaryingDensity():
     for i in linspace(0,17,20):
         excitationFn(count=1000,sweepingPotential=3,magnet=0,buffernDensity=10**i)
 
+def VaryingSweepPotential():
+    filename='exFn.dat'
+    file = open(filename,'w')
+
+    file.write("Density\tPercentThrough\tAvgT\tAvgU\tAvgCollisions\n")
+    file.close()
+    for i in linspace(1,10,10):
+        excitationFn(count=1*10**6,sweepingPotential=i,magnet=10e-4,buffernDensity=1e16)
+
 def singleRun():
     filename='exFn.dat'
     file = open(filename,'w')
     file.write("Density\tPercentThrough\tAvgT\tAvgU\n")
     file.close()
-    excitationFn(count=1*10**4,sweepingPotential=3,magnet=0,buffernDensity=1e17)
+    excitationFn(count=1*10**4,sweepingPotential=3,magnet=0,buffernDensity=1e15)
 
-VaryingDensity()
+#VaryingDensity()
 #singleRun()
+VaryingSweepPotential()

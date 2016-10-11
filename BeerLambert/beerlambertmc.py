@@ -103,7 +103,7 @@ class Electron:
                 s = 1.1 * self.box.length
         else:# Calculate a randomized distance between scattering events when number density of species is greater than 0
             s = self.randomstepsize()
-        
+
         if self.box.magnet != 0 or self.box.electr != 0:
             # Find time needed to travel given step size 
             # with nonzero magnetic and/or electric field
@@ -138,7 +138,7 @@ class Electron:
         # The box potential, plus the potential obtained from the sweeping 
         # potential, which will vary according to the position. 
         self.potential = (self.box.potential + self.box.electr*self.box.length/2 -
-                            self.scattpt[2]*self.box.electr)
+                self.scattpt[2]*self.box.electr)
         # Find new random scattering direction. Phi-azimuth angle [0, 2pi). Theta-altitude. [0, pi).
         phi = uniform(0, 2 * pi)
         theta = self.randomtheta()
@@ -218,7 +218,7 @@ class Electron:
     def rbCrossSection(self):
         #print("Note: The Rubidium cross section has been compromised to diagnose the self.speed = nan issue")
         return exp(-self.speed / 10 ** 8) * 10 ** 14
-        #return exp(-10**8 / 10 ** 8) * 10 ** 14
+    #return exp(-10**8 / 10 ** 8) * 10 ** 14
 
     # Determine scattering cross section of Nitrogen molecule. Dependent on energy of electron.
     def bufferCrossSection(self):
@@ -273,8 +273,8 @@ class Electron:
             else:
                 l = self.arcpsec(d)
                 return (-(d[2] * self.speed + sign(d[2]) * l) + sign(d[2]) * sqrt(
-                        (d[2] * self.speed + sign(d[2]) * l) ** 2 + 2 * cmr * self.box.electr * s * sign(d[2]))) / (
-                                cmr * self.box.electr)
+                    (d[2] * self.speed + sign(d[2]) * l) ** 2 + 2 * cmr * self.box.electr * s * sign(d[2]))) / (
+                            cmr * self.box.electr)
         else:
             return (s * sign(d[2])) / (d[2] * self.speed)
     # Calculate time required to travel given length along z axis (z) given initial scattering direction (d).
@@ -287,8 +287,8 @@ class Electron:
                 (d[2] * self.speed) ** 2 + 2 * cmr * self.box.electr * z)) / (
                         cmr * self.box.electr)
             value2 =(-d[2] * self.speed - sqrt(
-                    (d[2] * self.speed) ** 2 + 2 * cmr * self.box.electr * z)) / (
-                            cmr * self.box.electr)
+                (d[2] * self.speed) ** 2 + 2 * cmr * self.box.electr * z)) / (
+                        cmr * self.box.electr)
             if value1 > 0:
                 return value1
             else:
@@ -321,6 +321,7 @@ class Electron:
             self.alive = False
         elif self.scattpt[2] > self.box.length:
             self.alive = False
+        return self.alive
 
     # Determine if electron passes through aperture of attenuating chamber.
     @property
@@ -340,6 +341,7 @@ class Electron:
                         #print("Speed Before: {:.3e}".format(self.speed))
                         self.speed = self.newvel(t, self.direct)
                         #print("Speed After: {:.3e}".format(self.speed))
+                        self.alive = False
                         return True
                 # When magnetic and electric fields are zero, calculate location of electron at the length of the box
                 # along trajectory. Compare distance from (0, 0, box.length). Return true if less than aperture radius.
@@ -353,6 +355,7 @@ class Electron:
                         print(str(t))
                         self.speed = self.newvel(t, self.direct)
                         print(str(self.speed))
+                        self.alive=False
                         return True
                     return False
             except IndexError:
