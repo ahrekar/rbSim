@@ -29,7 +29,7 @@ b = 1.2 ** 2 * 2.84304
 class Box:
     def __init__(self, rbndensity=0, buffernDensity=10 ** 16, aperture=0.2,
             isotropic=True, magnetfield=0, electrfield=0, path3d=False,
-            potential=-20, sweepPotential=3):
+            potential=0, sweepPotential=3):
         # The number density of rubidium in the cell.
         self.rbnDensity = rbndensity
         # The number density of bufferGas in the cell
@@ -352,9 +352,9 @@ class Electron:
                     r = sqrt((r0[0] + t * (r1[0] - r0[0])) ** 2 + (r0[1] + t * (r1[1] - r0[1])) ** 2)
                     if r < self.box.aper:
                         self.potential = self.potentiallist[-1]
-                        print(str(t))
+                        #print(str(t))
                         self.speed = self.newvel(t, self.direct)
-                        print(str(self.speed))
+                        #print(str(self.speed))
                         self.alive=False
                         return True
                     return False

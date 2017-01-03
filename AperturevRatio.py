@@ -1,5 +1,20 @@
 from BeerLambert.beerlambertmc import *
+import math
 
+def transmissvalue(b):
+    electronCount=1000
+    thru=0
+    for i in range(electronCount):
+        p=Electron(b)
+        while p.alive:
+            p.movestep()
+            if p.thruaper:
+                thru+=1
+            else:
+                p.scatter()
+                p.inbox()
+    return thru/electronCount
+        
 
 # Plot Radius of Aperture vs. -log(transmission) / (b.sigt * b.length * b.nden). Depicts deviation of from Beer-Lambert
 # Law for larger apertures
@@ -10,9 +25,13 @@ def apervratio(fig, count=50000, isotrop=True, electr=0, magnet=0):
 
     for i in aper:
         # Set conditions of attenuating chamber
-        b = Box(10 ** 16, count, aperture=i, isotropic=isotrop, electrfield=electr, magnetfield=magnet)
-        transm = b.transmissvalue()
-        ratio = append(ratio, [-log(transm) / (b.sigt * b.length * b.nden)])
+        b = Box(buffernDensity=10 ** 17, aperture=i, isotropic=isotrop, electrfield=electr, magnetfield=magnet)
+        transm = transmissvalue(b)
+        if transm !=0:
+            ratio = append(ratio, [-math.log(transm) / (10**-16 * b.length * b.buffernDensity)])
+        else:
+            ratio = append(ratio, [0])
+            
         print(str(i) + ", " + str(ratio[-1]))
 
     w = fig.add_subplot(111)
