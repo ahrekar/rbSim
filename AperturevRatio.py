@@ -35,7 +35,7 @@ def apervratio(fig, count=50000, isotrop=True, electr=0, magnet=0):
 fig = figure()
 fig.canvas.set_window_title("Beer-Lambert Law Monte Carlo: Isotropic and Anisotropic Scattering")
 
-apervratio(fig, count=300)
-apervratio(fig, count=300, isotrop=False)
+apervratio(fig, count=3000)
+apervratio(fig, count=3000, isotrop=False)
 
 show()

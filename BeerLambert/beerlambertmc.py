@@ -15,11 +15,11 @@ jpev = 6.242 * 10 ** 18
 a = 0.9 ** 2 * 2.84304
 b = 1.2 ** 2 * 2.84304
 # The size of the discrete time step, measured in seconds.
-dt=5e-17
+dt=10**-10
 
 # Combines conditions of electron propagation into a single object, Box.
 class Box:
-    def __init__(self, ndensity, count, rbndensity=10 ** 13, 
+    def __init__(self, ndensity, count, rbndensity=0, 
                  n2ndensity=10 ** 16, aperture=0.2, isotropic=True, 
                  magnetfield=(0,0,0), electrfield=(0,0,0), 
                  polarexperi=False, path3d=False, bias=100.0):
@@ -84,7 +84,7 @@ class Electron:
         # Point of initialization
         self.scattpt = [0, 0, 0]
         # List of scatter points.
-        self.scattlist = [(0, 0, 0)]
+        self.scattlist = []
         # List of scattering direction at each point
         self.directlist = []
         # When recordpath=True, discretized path of electron. See box.rp.
@@ -111,7 +111,8 @@ class Electron:
         acc = cmr * (self.box.electr[cyclic[0]] + 
                      self.vel[cyclic[1]]*self.box.magnet[cyclic[2]] +
                      (-1)*self.vel[cyclic[2]]*self.box.magnet[cyclic[1]])
-        return self.speed * self.vel[index] * dt + .5 * acc * dt**2
+        #print("Index {} Acc.: {}".format(index,acc))
+        return self.vel[index] * dt + .5 * acc * dt**2
 
     # dv calculates the change in the velocity from the previous 
     # time step. The index gives access to the x, y, and z coordinates
@@ -140,6 +141,7 @@ class Electron:
 
         # Calculate the distance the particle will travel.
         dist = self.calcDistTraveled()
+        #print(dist)
 
         # Calculate probability that the particle scatters based on 
         # distance traveled.
@@ -148,7 +150,7 @@ class Electron:
                             # account for. 
             alpha = self.rbsig() * self.box.rbnden + self.n2nsig() * self.box.n2nden
         else:
-            alpha = self.box.sigt * self.box.nden
+            alpha = self.box.sigt * self.box.n2nden
 
         scatteringProbability = 1 - e**(-alpha*dist)
 
@@ -239,7 +241,7 @@ class Electron:
         if self.box.experi:
             alpha = self.rbsig() * self.box.rbnden + self.n2nsig() * self.box.n2nden
         else:
-            alpha = self.box.sigt * self.box.nden
+            alpha = self.box.sigt * self.box.n2nden
         return -log(xi) / alpha
 
     # Randomly sample theta/altitude angle of scattering direction. Derived via Inverse transform sampling.
