@@ -19,18 +19,14 @@ dt=10**-10
 
 # Combines conditions of electron propagation into a single object, Box.
 class Box:
-    def __init__(self, ndensity, count, rbndensity=0, 
+    def __init__(self, rbndensity=0, 
                  n2ndensity=10 ** 16, aperture=0.2, isotropic=True, 
                  magnetfield=(0,0,0), electrfield=(0,0,0), 
                  polarexperi=False, path3d=False, bias=100.0):
-        # Number density of arbitrary attenuating particle. When polarexperi=False
-        self.nden = ndensity
         # Number density of Rubidium atoms. When polarexperi=True
         self.rbnden = rbndensity
         # Number density of Nitrogen molecules. When polarexperi=True
         self.n2nden = n2ndensity
-        # Number of electrons to be emitted through the chamber
-        self.count = count
         # Scattering cross section of arbitrary attenuating particle. When polarexperi=False
         self.sigt = 10 ** -16
         # Radius of aperture
@@ -62,7 +58,7 @@ class Box:
     # Find fraction of "count" number of electrons transmitted through aperture of given box. Return fraction.
     def transmissvalue(self):
         thru = 0
-        for i in range(1, self.count + 1):
+        for i in range(self.count):
             p = Electron(self)
             while p.alive:
                 p.movestep()
@@ -90,7 +86,7 @@ class Electron:
         # When recordpath=True, discretized path of electron. See box.rp.
         self.path = [(0, 0, 0)]
         # Velocity of initialization (cm/s)
-        self.vel = [0,0,10.0 ** 8]
+        self.vel = [0,8.0**8,10.0 ** 8]
         # When polarexperi=True randomly assign random spin polarization of electron with probability 0.5.
         xi = uniform(0, 1)
         if xi < 0.5:
@@ -107,7 +103,7 @@ class Electron:
     # with 0,1, and 2, respectively. 
     def dx(self, index):
         cyclic = [0,1,2]
-        cyclic = roll(cyclic, index)
+        cyclic = roll(cyclic, -index)
         acc = cmr * (self.box.electr[cyclic[0]] + 
                      self.vel[cyclic[1]]*self.box.magnet[cyclic[2]] +
                      (-1)*self.vel[cyclic[2]]*self.box.magnet[cyclic[1]])
@@ -119,7 +115,7 @@ class Electron:
     # with 0,1, and 2, respectively. 
     def dv(self, index):
         cyclic = [0,1,2]
-        cyclic = roll(cyclic, index)
+        cyclic = roll(cyclic, -index)
         acc = cmr * (self.box.electr[cyclic[0]] + 
                      self.vel[cyclic[1]]*self.box.magnet[cyclic[2]] +
                      (-1)*self.vel[cyclic[2]]*self.box.magnet[cyclic[1]])
@@ -330,21 +326,22 @@ class Electron:
     # terminate.
     def inbox(self):
         d = self.directlist[-1]
+        print(self.scattlist[-1][2])
         r = sqrt((self.scattpt[0]) ** 2 + (self.scattpt[1]) ** 2)
+        print(r)
         if self.scattpt[2] < 0:
-            self.scattlist = [(0, 0, 0,)]
+            #self.scattlist = [(0, 0, 0,)]
             self.directlist = [(0, 0, 0,)]
             self.alive = False
+            print("Hit front of box")
         elif r > self.box.radius:
-            self.scattlist = [(0, 0, 0)]
+            #self.scattlist = [(0, 0, 0)]
             self.directlist = [(0, 0, 0,)]
             self.alive = False
-        elif self.box.magnet[2] != 0 and (self.speed * sqrt(d[0] + d[1])) / (-cmr * self.box.magnet[2]) + r > self.box.radius:
-            self.scattlist = [(0, 0, 0)]
-            self.directlist = [(0, 0, 0,)]
-            self.alive = False
+            print("Hit side of cylinder")
         elif self.scattpt[2] > self.box.length:
             self.alive = False
+            print("Hit end of box")
 
     # Determine if electron passes through aperture of attenuating chamber.
     @property
