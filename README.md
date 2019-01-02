@@ -7,6 +7,10 @@ not sure what all this means, I recommend installing
 anaconda, which should contain all of the packages 
 needed for this code. 
 
+# Required python packages
+  numpy
+
+# Authors
 Originally authored by Thomas Graul (June 2016) 
 
 Currently maintained by Karl Ahrendsen (September 2016)
