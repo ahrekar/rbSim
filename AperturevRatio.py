@@ -3,16 +3,20 @@ from BeerLambert.beerlambertmc import *
 
 # Plot Radius of Aperture vs. -log(transmission) / (b.sigt * b.length * b.nden). Depicts deviation of from Beer-Lambert
 # Law for larger apertures
-def apervratio(fig, count=50000, isotrop=True, electr=0, magnet=0):
+def apervratio(fig, count=10, isotrop=True, electr=0, magnet=0):
     # Array of aperture radii
     aper = linspace(0.05, 1.0, 10)
     ratio = empty([0])
 
     for i in aper:
         # Set conditions of attenuating chamber
-        b = Box(10 ** 16, count, aperture=i, isotropic=isotrop, electrfield=electr, magnetfield=magnet)
-        transm = b.transmissvalue()
-        ratio = append(ratio, [-log(transm) / (b.sigt * b.length * b.nden)])
+        b = Box(rbndensity=10 ** 16,n2ndensity=10 ** 15, aperture=i, 
+                isotropic=isotrop, electrfield=electr, magnetfield=magnet)
+        for j in range(count):
+            b.transmissvalue()
+        transm = len(b.electrons)/count
+        print(transm)
+        ratio = append(ratio, [-log(transm) / (b.sigt * b.length * b.n2nden)])
         print(str(i) + ", " + str(ratio[-1]))
 
     w = fig.add_subplot(111)
@@ -35,7 +39,7 @@ def apervratio(fig, count=50000, isotrop=True, electr=0, magnet=0):
 fig = figure()
 fig.canvas.set_window_title("Beer-Lambert Law Monte Carlo: Isotropic and Anisotropic Scattering")
 
-apervratio(fig, count=3000)
-apervratio(fig, count=3000, isotrop=False)
+apervratio(fig, count=100)
+apervratio(fig, count=100, isotrop=False)
 
 show()

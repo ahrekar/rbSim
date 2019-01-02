@@ -58,18 +58,20 @@ class Box:
     # Find fraction of "count" number of electrons transmitted through aperture of given box. Return fraction.
     def transmissvalue(self):
         thru = 0
-        for i in range(self.count):
-            p = Electron(self)
-            while p.alive:
-                p.movestep()
-                p.inbox()
-            if p.thruaper:
-                thru += 1
-                self.electrons.append(p)
-        return thru / self.count
+        p = Electron(self)
+        while p.alive:
+            p.movestep()
+            p.inbox()
+        if p.thruaper:
+            thru += 1
+            self.electrons.append(p)
+        return p.thruaper
 
 
 class Electron:
+    def __str__(self):
+        return self.path[len(self.path)-1]
+        
     def __init__(self, box):
         # Potential energy of the electron 
         self.potential = 120.0 
@@ -86,7 +88,7 @@ class Electron:
         # When recordpath=True, discretized path of electron. See box.rp.
         self.path = [(0, 0, 0)]
         # Velocity of initialization (cm/s)
-        self.vel = [0,8.0**8,10.0 ** 8]
+        self.vel = [0,0,10.0 ** 8]
         # When polarexperi=True randomly assign random spin polarization of electron with probability 0.5.
         xi = uniform(0, 1)
         if xi < 0.5:
@@ -326,22 +328,20 @@ class Electron:
     # terminate.
     def inbox(self):
         d = self.directlist[-1]
-        print(self.scattlist[-1][2])
         r = sqrt((self.scattpt[0]) ** 2 + (self.scattpt[1]) ** 2)
-        print(r)
         if self.scattpt[2] < 0:
             #self.scattlist = [(0, 0, 0,)]
             self.directlist = [(0, 0, 0,)]
             self.alive = False
-            print("Hit front of box")
+            #print("Hit front of box")
         elif r > self.box.radius:
             #self.scattlist = [(0, 0, 0)]
             self.directlist = [(0, 0, 0,)]
             self.alive = False
-            print("Hit side of cylinder")
+            #print("Hit side of cylinder")
         elif self.scattpt[2] > self.box.length:
             self.alive = False
-            print("Hit end of box")
+            #print("Hit end of box")
 
     # Determine if electron passes through aperture of attenuating chamber.
     @property
@@ -353,9 +353,13 @@ class Electron:
                 # trajectory. Compare distance from (0, 0, box.length). 
                 # Return true if less than aperture radius.
                 if self.box.electr[2] != 0 or self.box.magnet[2] != 0:
-                    t = self.tblength(self.box.length - self.scattlist[-2][2], self.directlist[-1])
-                    r = sqrt((self.x(t, self.directlist[-1]) + self.scattlist[-2][0]) ** 2 +
-                             (self.y(t, self.directlist[-1]) + self.scattlist[-2][1]) ** 2)
+                    t = self.tblength(self.box.length - self.scattlist[-2][2], 
+                                      self.directlist[-1])
+                    r = sqrt((self.x(t, self.directlist[-1]) + 
+                              self.scattlist[-2][0]) ** 2 +
+                    
+                             (self.y(t, self.directlist[-1]) +
+                              self.scattlist[-2][1]) ** 2)
                     if r < self.box.aper:
                         return True
                 # When magnetic and electric fields are zero, calculate location of electron at the length of the box
